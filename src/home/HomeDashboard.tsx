@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
@@ -17,6 +18,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { BottomNav, type NavKey } from "../components/BottomNav";
+import { HomeTopBar } from "../components/HomeTopBar";
 import { usePathname, useRouter } from "next/navigation";
 import { useProfile } from "../settings/profileStore";
 import { useNotifications } from "../notifications/notificationsData";
@@ -152,47 +155,8 @@ function ProgressRing({ value, max, label }: { value: number; max: number; label
 /* Sections                                                            */
 /* ------------------------------------------------------------------ */
 
-export function HomeTopBar({ now = new Date() }: { now?: Date }) {
-  const router = useRouter();
-  const { profile } = useProfile();
-  const { unreadCount } = useNotifications();
-  return (
-    <div className="flex items-center justify-between">
-      <button
-        type="button"
-        onClick={() => {
-          router.push("/settings");
-        }}
-        aria-label="Open settings"
-        className="flex items-center gap-3 rounded-full text-left transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
-      >
-        <img
-          src="/images/avatar.jpg"
-          alt=""
-          className="h-12 w-12 rounded-full object-cover ring-2 ring-white dark:ring-[#e5be79]/35"
-        />
-        <div>
-          <p className="text-[13px] text-[#85735a] dark:text-[#9c8b72]">{greeting(now)}</p>
-          <p className="text-[17px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-            {profile.name}
-          </p>
-        </div>
-      </button>
-      <div className="flex items-center gap-2.5">
-        <LanguageSwitcher />
-        <RoundIconButton
-          label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
-          dot={unreadCount > 0}
-          onClick={() => {
-            router.push("/notifications");
-          }}
-        >
-          <Bell size={19} strokeWidth={1.8} />
-        </RoundIconButton>
-      </div>
-    </div>
-  );
-}
+export { BottomNav, HomeTopBar };
+export type { NavKey };
 
 function TopSection({ now }: { now: Date }) {
   return (
@@ -292,12 +256,10 @@ function StatsSection({ now }: { now: Date }) {
         {/* RIGHT — two pill cards: the two ways to check in */}
         <div className="flex flex-col gap-3">
           {/* Primary action: voice check-in (slightly larger, stronger edge) */}
-          <button
-            type="button"
+          <Link
+            href="/voice"
+            prefetch={true}
             data-dashboard-card
-            onClick={() => {
-              router.push("/voice");
-            }}
             className="home-card-solid group flex flex-col justify-center rounded-[30px] px-5 py-5 text-left ring-1 ring-[#c9a35d]/45 transition hover:ring-[#c9a35d]/80 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:ring-[#e5be79]/35 dark:hover:ring-[#e5be79]/70 dark:focus-visible:outline-[#e5be79]"
           >
             <div className="flex items-center justify-between">
@@ -316,7 +278,7 @@ function StatsSection({ now }: { now: Date }) {
             <p className="mt-1 text-[11.5px] tracking-[0.08em] text-[#85735a] dark:text-[#9c8b72]">
               ABOUT 1 MIN
             </p>
-          </button>
+          </Link>
 
           {/* Secondary action: log by hand (compact) */}
           <button
@@ -476,119 +438,6 @@ function CalendarSection({ now }: { now: Date }) {
         )}
       </div>
     </section>
-  );
-}
-
-export type NavKey = "home" | "calendar" | "report" | "checkin";
-
-export function BottomNav({ current = "home" }: { current?: NavKey }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [active, setActive] = useState<NavKey>(current);
-
-  useEffect(() => {
-    setActive(current);
-  }, [current]);
-
-  const [overCards, setOverCards] = useState(false);
-  const pillRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let frame = 0;
-
-    const measureOverlap = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const pill = pillRef.current;
-        if (!pill) return;
-
-        const navRect = pill.getBoundingClientRect();
-        const cards = document.querySelectorAll<HTMLElement>("[data-dashboard-card]");
-        const overlaps = Array.from(cards).some((card) => {
-          const cardRect = card.getBoundingClientRect();
-          return (
-            navRect.left < cardRect.right &&
-            navRect.right > cardRect.left &&
-            navRect.top < cardRect.bottom &&
-            navRect.bottom > cardRect.top
-          );
-        });
-
-        setOverCards(overlaps);
-      });
-    };
-
-    measureOverlap();
-    window.addEventListener("scroll", measureOverlap, { passive: true });
-    window.addEventListener("resize", measureOverlap);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", measureOverlap);
-      window.removeEventListener("resize", measureOverlap);
-    };
-  }, []);
-
-  const item = (key: NavKey, label: string, icon: React.ReactNode, onClick?: () => void) => {
-    const isActive = active === key;
-    return (
-      <button
-        type="button"
-        aria-label={label}
-        aria-current={isActive ? "page" : undefined}
-        onClick={() => {
-          setActive(key);
-          onClick?.();
-        }}
-        className={`flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 active:scale-95 ${
-          isActive
-            ? "bg-[#c9a35d] text-[#2c2010] shadow-[0_10px_22px_-12px_rgba(140,96,30,0.75)] dark:bg-[#8d6a2a] dark:text-[#fdf2da] dark:shadow-[0_10px_24px_-12px_rgba(0,0,0,0.85)]"
-            : "bg-white/45 text-[#4a3f30] hover:bg-white/70 dark:bg-white/8 dark:text-[#e6dbca] dark:hover:bg-white/14"
-        }`}
-      >
-        {icon}
-      </button>
-    );
-  };
-
-  return (
-    <nav
-      aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(16px,env(safe-area-inset-bottom))]"
-    >
-      <div
-        ref={pillRef}
-        className={`flex items-center gap-2.5 rounded-full p-2 transition-[background-color,border-color,box-shadow] duration-300 ${
-          overCards ? "home-nav-overlap" : "home-nav-clear"
-        }`}
-      >
-        {item("home", "Home", <Home size={19} strokeWidth={1.9} />, () => {
-          if (pathname === "/home") window.scrollTo({ top: 0, behavior: "smooth" });
-          else router.push("/home");
-        })}
-        {item("calendar", "Calendar", <CalendarDays size={19} strokeWidth={1.8} />, () => {
-          router.push("/calendar");
-        })}
-
-        {/* Voice assistant */}
-        <button
-          type="button"
-          aria-label="Start voice check-in"
-          onClick={() => {
-            router.push("/voice");
-          }}
-          className="relative mx-1 flex h-16 w-16 items-center justify-center rounded-full bg-[#3b3226] text-[#fbe7b8] shadow-[0_10px_24px_-10px_rgba(60,45,25,0.7)] transition active:scale-95 dark:bg-[#e5be79] dark:text-[#231b12] dark:shadow-[0_10px_26px_-8px_rgba(229,190,121,0.45)]"
-        >
-          <Mic size={24} strokeWidth={1.9} className="relative" />
-        </button>
-
-        {item("report", "ANC report", <FileText size={19} strokeWidth={1.8} />, () => {
-          router.push("/reports");
-        })}
-        {item("checkin", "Check-in logs", <ListChecks size={19} strokeWidth={1.8} />, () => {
-          router.push("/logs");
-        })}
-      </div>
-    </nav>
   );
 }
 

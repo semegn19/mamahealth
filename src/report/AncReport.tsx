@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { AlertTriangle, ChevronLeft, FileText } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { SeverityCalendar, SymptomBars } from "./charts";
 import { FoodScoreDonut } from "./FoodScoreDonut";
@@ -28,7 +28,6 @@ const topSymptoms = SYMPTOM_TOTALS.slice(0, 4);
 const leading = topSymptoms[0];
 
 export function AncReport({ reportId }: { reportId?: string }) {
-  const router = useRouter();
   const report = getReportArchiveItem(reportId);
   const [selectedDay, setSelectedDay] = useState<DayRecord | null>(null);
   const symptomDetailsId = useId();
@@ -52,10 +51,6 @@ export function AncReport({ reportId }: { reportId?: string }) {
     useCountUp(dangerSigns.length, { duration: 950, delay: 260 }),
   );
 
-  const goReports = () => {
-    router.push("/reports");
-  };
-
   return (
     <div className="relative min-h-[100dvh] w-full bg-[#f5efe3] text-[#3b3226] dark:bg-[#15120e] dark:text-[#f5ede0]">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -68,14 +63,14 @@ export function AncReport({ reportId }: { reportId?: string }) {
         {/* Header */}
         <header>
           <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={goReports}
+            <Link
+              href="/reports"
+              prefetch={true}
               aria-label="Back to reports"
               className="home-icon-solid flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
             >
               <ChevronLeft size={20} strokeWidth={1.8} />
-            </button>
+            </Link>
             <div className="flex items-center gap-2.5">
               <LanguageSwitcher />
               <ReportShareButton appointment={report.appointment} reportId={report.id} />

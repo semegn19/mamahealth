@@ -15,6 +15,7 @@ import {
 import { LeafMark } from "../components/LeafMark";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { useProfile } from "../settings/profileStore";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 /* ------------------------------------------------------------------ */
@@ -197,6 +198,12 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
     },
     [],
   );
+
+  useEffect(() => {
+    router.prefetch("/splash");
+    router.prefetch("/onboarding");
+    router.prefetch("/home");
+  }, [router]);
 
   // Keep the screen in sync when the route changes (e.g. #register → #login),
   // since React reuses this component instead of remounting it.
@@ -420,15 +427,13 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
             </p>
 
             <p className="mt-2.5 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  router.push(isRegister ? "/onboarding" : "/splash");
-                }}
+              <Link
+                href={isRegister ? "/onboarding" : "/splash"}
+                prefetch={true}
                 className="rounded-full px-3 py-1.5 text-[12.5px] font-medium text-[#9b8a6f] underline decoration-[#c9a35d]/40 underline-offset-4 transition-colors hover:text-[#4a3f30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#9c8b72] dark:hover:text-[#f5ede0] dark:focus-visible:outline-[#e5be79]"
               >
                 Skip for now
-              </button>
+              </Link>
             </p>
           </form>
 

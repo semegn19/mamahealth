@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   Bell,
@@ -10,8 +11,7 @@ import {
   Mic,
   Pill,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { BottomNav } from "../home/HomeDashboard";
+import { BottomNav } from "../components/BottomNav";
 import { useNotifications, type NotificationItem } from "./notificationsData";
 
 export function NotificationsPage() {
@@ -33,12 +33,6 @@ export function NotificationsPage() {
   const unreadItems = items.filter((n) => !n.read);
   const readItems = items.filter((n) => n.read);
   const currentList = tab === "unread" ? unreadItems : readItems;
-
-  const router = useRouter();
-
-  const goBack = () => {
-    router.push("/home");
-  };
 
   const getCategoryIcon = (category: NotificationItem["category"]) => {
     const iconClass = "text-[#8d6a2a] dark:text-[#e5be79]";
@@ -67,14 +61,14 @@ export function NotificationsPage() {
         {/* Header bar */}
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={goBack}
+            <Link
+              href="/home"
+              prefetch={true}
               aria-label="Back to home"
               className="home-icon-solid flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
             >
               <ChevronLeft size={20} strokeWidth={1.8} />
-            </button>
+            </Link>
             <div>
               <h1 className="text-[30px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
                 Notifications

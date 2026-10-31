@@ -1,5 +1,20 @@
 import type { Metadata, Viewport } from "next";
+import { Outfit, Noto_Sans_Ethiopic } from "next/font/google";
 import "./globals.css";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const notoSansEthiopic = Noto_Sans_Ethiopic({
+  subsets: ["ethiopic"],
+  weight: ["400", "500", "600"],
+  variable: "--font-noto-ethiopic",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Mama Health — Gentle care for every stage of motherhood",
@@ -33,14 +48,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${outfit.variable} ${notoSansEthiopic.variable}`}
+    >
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;500;600&family=Outfit:wght@300;400;500;600&display=swap"
-          rel="stylesheet"
-        />
         <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
       <body>{children}</body>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NextDotFillButton } from "../components/NextDotFillButton";
 import { Footer } from "../sections/Footer";
 import { HeroArt } from "../sections/HeroArt";
@@ -23,6 +23,11 @@ export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showJourneyModal, setShowJourneyModal] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    router.prefetch("/login");
+    router.prefetch("/home");
+  }, [router]);
 
   /** Nav items scroll to their section instead of touching the hash router. */
   const goTo = (item: (typeof navItems)[number]) => {
@@ -148,6 +153,7 @@ export function LandingPage() {
             <div className="flex items-center">
               <NextDotFillButton
                 label="Begin your journey"
+                onMouseEnter={() => router.prefetch("/login")}
                 onClick={() => {
                   router.push("/login");
                 }}

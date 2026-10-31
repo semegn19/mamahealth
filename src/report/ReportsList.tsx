@@ -1,13 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
-import { BottomNav, HomeTopBar } from "../home/HomeDashboard";
+import { BottomNav } from "../components/BottomNav";
+import { HomeTopBar } from "../components/HomeTopBar";
 import { REPORT_ARCHIVE } from "./reportCatalog";
 
 export function ReportsList() {
-  const router = useRouter();
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#f3ecdf] text-[#4a3f30] dark:bg-[#15120e] dark:text-[#f0e4ce]">
@@ -35,13 +35,11 @@ export function ReportsList() {
             const dangerCount = report.dangerSigns?.length ?? 0;
 
             return (
-              <button
+              <Link
                 key={report.id}
-                type="button"
+                href={`/report/${report.id}`}
+                prefetch={true}
                 data-dashboard-card
-                onClick={() => {
-                  router.push(`/report/${report.id}`);
-                }}
                 className={`report-list-card group relative overflow-hidden rounded-[26px] border p-5 text-left shadow-[0_14px_34px_-23px_rgba(112,78,28,0.48)] backdrop-blur-xl transition hover:-translate-y-0.5 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none dark:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.82)] ${
                   hasDanger
                     ? "border-[#c65a45]/60 bg-[linear-gradient(145deg,rgba(247,224,216,0.92),rgba(198,90,69,0.3))] hover:border-[#c65a45]/90 focus-visible:outline-[#9c3a29] dark:border-[#d9715b]/50 dark:bg-[linear-gradient(145deg,rgba(84,31,23,0.82),rgba(50,19,14,0.86))] dark:hover:border-[#e8846e] dark:focus-visible:outline-[#f08b75] md:col-span-2"
@@ -115,7 +113,7 @@ export function ReportsList() {
                 <span className="relative mt-4 block text-[13px] leading-relaxed text-[#6f6149] dark:text-[#c7b69c]">
                   {report.summary}
                 </span>
-              </button>
+              </Link>
             );
           })}
         </section>

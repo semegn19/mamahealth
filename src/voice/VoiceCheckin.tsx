@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { CheckinReportSheet, severityLabel, type CheckinEntry } from "../components/CheckinReportSheet";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 /* ------------------------------------------------------------------ */
@@ -353,10 +354,11 @@ export function VoiceCheckin() {
           : "idle";
 
   useEffect(() => {
+    router.prefetch("/home");
     return () => {
       timers.current.forEach((id) => window.clearTimeout(id));
     };
-  }, []);
+  }, [router]);
 
   const later = (fn: () => void, ms: number) => {
     const id = window.setTimeout(fn, ms);
@@ -475,14 +477,14 @@ export function VoiceCheckin() {
 
       <div className="relative flex min-h-[100dvh] w-full max-w-[440px] flex-col px-6 pb-8 pt-6">
         <header className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={goHome}
+          <Link
+            href="/home"
+            prefetch={true}
             aria-label="Back to home"
             className="home-icon-solid flex h-12 w-12 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95"
           >
             <ChevronLeft size={20} strokeWidth={1.8} />
-          </button>
+          </Link>
 
           <div className="text-center">
             <p className="text-[16px] font-medium tracking-tight">Voice check-in</p>
@@ -679,13 +681,13 @@ export function VoiceCheckin() {
                   <span aria-hidden="true" className="text-[#c65a45]/50">
                     /
                   </span>
-                  <button
-                    type="button"
-                    onClick={goHome}
+                  <Link
+                    href="/home"
+                    prefetch={true}
                     className="rounded-full px-3 py-2 font-medium text-[#6f6149] underline decoration-[#b98a3e]/50 underline-offset-4 transition-colors hover:text-[#3b3226] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#c7b69c] dark:hover:text-[#f5ede0]"
                   >
                     Back to home
-                  </button>
+                  </Link>
                 </div>
               </div>
             ) : (
@@ -706,13 +708,13 @@ export function VoiceCheckin() {
                   <FileText size={18} strokeWidth={1.8} />
                   View report
                 </button>
-                <button
-                  type="button"
-                  onClick={goHome}
-                  className="w-full rounded-full bg-[#3b3226] px-6 py-4 text-[15px] font-medium text-[#fbe7b8] transition hover:bg-[#4a3f30] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
+                <Link
+                  href="/home"
+                  prefetch={true}
+                  className="flex w-full items-center justify-center rounded-full bg-[#3b3226] px-6 py-4 text-[15px] font-medium text-[#fbe7b8] transition hover:bg-[#4a3f30] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
                 >
                   Back to home
-                </button>
+                </Link>
               </div>
             )
           ) : (

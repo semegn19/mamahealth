@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { LeafMark } from "../components/LeafMark";
@@ -23,6 +24,7 @@ export function SplashPage() {
   const router = useRouter();
 
   useEffect(() => {
+    router.prefetch("/home");
     // `replace` keeps the splash out of history so Back never loops through it.
     const advance = window.setTimeout(() => router.replace("/home"), DURATION_MS);
     const rotate = window.setInterval(() => {
@@ -84,9 +86,10 @@ export function SplashPage() {
         </p>
         <p className="sr-only">Loading Mama Health, please wait.</p>
 
-        <button
-          type="button"
-          onClick={() => router.replace("/home")}
+        <Link
+          href="/home"
+          replace
+          prefetch={true}
           className="group mt-6 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-medium text-[#8d6a2a] underline decoration-[#c9a35d]/60 underline-offset-4 transition-colors hover:text-[#4a3f30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#e5be79] dark:hover:text-[#f5ede0] dark:focus-visible:outline-[#e5be79]"
         >
           Continue
@@ -96,7 +99,7 @@ export function SplashPage() {
             className="transition-transform duration-300 group-hover:translate-x-1"
             aria-hidden="true"
           />
-        </button>
+        </Link>
       </div>
     </div>
   );

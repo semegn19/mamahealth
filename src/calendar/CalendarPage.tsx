@@ -14,7 +14,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { BottomNav, HomeTopBar } from "../home/HomeDashboard";
+import { BottomNav } from "@/components/BottomNav";
+import { HomeTopBar } from "@/components/HomeTopBar";
 import {
   dateKey,
   DUE_DATE_KEY,

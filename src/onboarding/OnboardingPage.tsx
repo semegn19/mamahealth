@@ -454,6 +454,10 @@ export function OnboardingPage() {
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    router.prefetch("/home");
+  }, [router]);
+
+  useEffect(() => {
     const stored = loadOnboarding();
     setData(stored);
     setScreen(stored.completed ? 1 : "welcome");

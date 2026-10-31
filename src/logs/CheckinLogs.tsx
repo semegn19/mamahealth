@@ -2,7 +2,8 @@
 
 import { useState, type CSSProperties } from "react";
 import { AlertTriangle, ChevronRight, Mic } from "lucide-react";
-import { BottomNav, HomeTopBar } from "../home/HomeDashboard";
+import { BottomNav } from "@/components/BottomNav";
+import { HomeTopBar } from "@/components/HomeTopBar";
 import { CheckinReportSheet } from "../components/CheckinReportSheet";
 import { CHECKIN_LOGS } from "./checkinLogsData";
 
