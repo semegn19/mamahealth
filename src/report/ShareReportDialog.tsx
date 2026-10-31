@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Copy, Download, Share2, X } from "lucide-react";
-import { LeafMark } from "../components/LeafMark";
+import { AppLogo } from "../components/AppLogo";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslation } from "../components/languageStore";
 import { ModalDialog } from "../components/ModalDialog";
@@ -145,9 +145,9 @@ export function ShareReportDialog({
             />
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#fffdf8] text-[#a87a3d] ring-4 ring-[#fffdf8]"
+              className="pointer-events-none absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#3b3226] p-1 shadow-sm ring-4 ring-[#fffdf8]"
             >
-              <LeafMark className="h-[25px] w-[25px]" />
+              <AppLogo className="h-full w-full" size={24} />
             </span>
           </div>
           <p className="mt-3 text-center text-[12.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">

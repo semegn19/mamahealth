@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { LeafMark } from "../components/LeafMark";
+import { AppLogo } from "../components/AppLogo";
 import { useTranslation } from "../components/languageStore";
 
 const DURATION_MS = 3200;
@@ -55,8 +55,8 @@ export function SplashPage() {
             className="absolute inset-0 animate-ping rounded-full border border-[#c9a35d]/30 [animation-duration:2.4s] dark:border-[#e5be79]/25"
             style={{ animationDelay: "1.2s" }}
           />
-          <span className="splash-breathe flex h-24 w-24 items-center justify-center rounded-full bg-[#3b3226] text-[#fbe7b8] shadow-[0_18px_40px_-16px_rgba(60,45,25,0.65)] dark:bg-[#e5be79] dark:text-[#231b12] dark:shadow-[0_18px_44px_-14px_rgba(229,190,121,0.45)]">
-            <LeafMark className="h-[64px] w-[64px]" />
+          <span className="splash-breathe flex h-28 w-28 items-center justify-center rounded-full bg-[#3b3226] p-3.5 shadow-[0_18px_40px_-16px_rgba(60,45,25,0.65)] dark:border dark:border-[#e5be79]/30 dark:bg-[#221c15] dark:shadow-[0_18px_44px_-14px_rgba(229,190,121,0.35)]">
+            <AppLogo className="h-full w-full" size={100} priority />
           </span>
         </div>
 

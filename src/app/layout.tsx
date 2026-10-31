@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   description:
     "Mama Health is a gentle maternal health companion guiding you through pregnancy, birth and early motherhood with care that grows with you.",
   applicationName: "Mama Health",
+  icons: {
+    icon: "/images/mother-and-child-gold.svg",
+    apple: "/images/mother-and-child-gold.svg",
+  },
 };
 
 export const viewport: Viewport = {

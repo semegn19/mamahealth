@@ -12,7 +12,7 @@ import {
   Mail,
   User,
 } from "lucide-react";
-import { LeafMark } from "../components/LeafMark";
+import { AppLogo } from "../components/AppLogo";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { useProfile } from "../settings/profileStore";
 import { useTranslation } from "../components/languageStore";
@@ -55,11 +55,11 @@ function saveAccounts(accounts: Account[]) {
 function Brand() {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-2">
-      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3b3226] text-[#fbe7b8] dark:bg-[#e5be79] dark:text-[#231b12]">
-        <LeafMark className="h-[25px] w-[25px]" />
+    <div className="flex items-center gap-2.5">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#3b3226] p-1.5 shadow-sm dark:border dark:border-[#e5be79]/30 dark:bg-[#221c15]">
+        <AppLogo className="h-full w-full" size={32} priority />
       </span>
-      <span className="text-[18px] font-medium tracking-tight text-[#4a3f30] dark:text-[#f5ede0]">
+      <span className="text-[19px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
         {t("common.appName")}
       </span>
     </div>
