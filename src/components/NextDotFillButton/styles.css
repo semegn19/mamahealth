@@ -1,0 +1,119 @@
+.next-dot-fill-button,
+.next-dot-fill-button * {
+  box-sizing: border-box;
+}
+
+.next-dot-fill-button {
+  /* One gold for both the resting dot and the hover flood. */
+  --ndf-gold: #e2b86e;
+
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 46px;
+  padding: 0 28px 0 40px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(214, 180, 115, 0.55);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #4a3f30;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 18px -4px rgba(180, 140, 70, 0.22);
+  transition:
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.4s ease,
+    border-color 0.4s ease,
+    color 0.35s ease;
+  user-select: none;
+}
+
+.dark .next-dot-fill-button {
+  --ndf-gold: #e5be79;
+  background: rgba(38, 31, 23, 0.88);
+  border-color: rgba(217, 171, 94, 0.42);
+  color: #f5ede0;
+  box-shadow: 0 6px 22px -6px rgba(0, 0, 0, 0.65);
+}
+
+.next-dot-fill-button:hover {
+  border-color: rgba(212, 168, 92, 0.9);
+  box-shadow: 0 10px 28px -6px rgba(180, 135, 55, 0.3);
+}
+
+.dark .next-dot-fill-button:hover,
+.dark .next-dot-fill-button:focus-visible {
+  color: #231b12;
+  border-color: rgba(235, 198, 134, 0.95);
+  box-shadow: 0 10px 28px -6px rgba(217, 171, 94, 0.32);
+}
+
+.next-dot-fill-button:active {
+  transform: scale(0.96);
+}
+
+/* Leading dot: starts as a small gold accent, then floods the pill on hover. */
+.next-dot-fill-button__fill {
+  position: absolute;
+  left: 19px;
+  top: calc(50% - 4.5px);
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ndf-gold);
+  box-shadow: 0 0 8px rgba(217, 171, 94, 0.45);
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.next-dot-fill-button__label {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Hover + keyboard focus: the dot expands into the flood. Its colour never
+   changes, so the fill stays one solid tone throughout the transition. */
+.next-dot-fill-button:hover .next-dot-fill-button__fill,
+.next-dot-fill-button:focus-visible .next-dot-fill-button__fill {
+  transform: scale(45);
+  box-shadow: none;
+}
+
+.next-dot-fill-button:focus-visible {
+  outline: 2px solid #caa152;
+  outline-offset: 3px;
+}
+
+/* Small phones: tighten the padding so the single-line label still fits. */
+@media (max-width: 400px) {
+  .next-dot-fill-button {
+    padding: 0 20px 0 32px;
+    font-size: 14px;
+  }
+
+  .next-dot-fill-button__fill {
+    left: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next-dot-fill-button,
+  .next-dot-fill-button__fill {
+    transition: none;
+  }
+}

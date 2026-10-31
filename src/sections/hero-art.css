@@ -1,0 +1,61 @@
+/* ------------------------------------------------------------------ */
+/* Landing hero artwork: a traced line drawing of a belly cradled by   */
+/* hand, vines and leaves. It draws itself on load, then drifts.       */
+/* ------------------------------------------------------------------ */
+
+.hero-art {
+  overflow: hidden;
+}
+
+/* Line-drawing: pathLength is normalised to 1 on every stroke, so a single
+   dash array works for all of them. Duration / delay come from the component
+   and are proportional to each stroke's length. */
+@keyframes hero-draw {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+.hero-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: hero-draw var(--hero-dur, 1.6s) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: var(--hero-delay, 0s);
+}
+
+/* Once drawn, the whole figure floats almost imperceptibly, like breath. */
+@keyframes hero-drift-slow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -7px, 0) scale(1.008);
+  }
+}
+
+.hero-drift-slow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hero-drift-slow 16s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-draw,
+  .hero-drift-slow {
+    animation: none;
+  }
+
+  .hero-draw {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
