@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CheckinLogs } from "../../src/logs/CheckinLogs";
+import { CheckinLogs } from "@/logs/CheckinLogs";
 
 export default function Page() {
   return <CheckinLogs />;

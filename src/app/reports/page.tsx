@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ReportsList } from "../../src/report/ReportsList";
+import { ReportsList } from "@/report/ReportsList";
 
 export default function Page() {
   return <ReportsList />;

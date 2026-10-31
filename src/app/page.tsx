@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LandingPage } from "../src/landing/LandingPage";
+import { LandingPage } from "@/landing/LandingPage";
 
 export default function Page() {
   return <LandingPage />;

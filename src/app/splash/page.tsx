@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SplashPage } from "../../src/auth/SplashPage";
+import { SplashPage } from "@/auth/SplashPage";
 
 export default function Page() {
   return <SplashPage />;

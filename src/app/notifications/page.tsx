@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { NotificationsPage } from "../../src/notifications/NotificationsPage";
+import { NotificationsPage } from "@/notifications/NotificationsPage";
 
 export default function Page() {
   return <NotificationsPage />;

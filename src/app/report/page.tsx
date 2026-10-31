@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AncReport } from "../../src/report/AncReport";
+import { AncReport } from "@/report/AncReport";
 
 /** /report shows the most recent (third) appointment. */
 export default function Page() {

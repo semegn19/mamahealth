@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AuthPage } from "../../src/auth/AuthPage";
+import { AuthPage } from "@/auth/AuthPage";
 
 export default function Page() {
   return <AuthPage initialMode="register" />;

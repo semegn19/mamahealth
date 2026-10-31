@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { HomeDashboard } from "../../src/home/HomeDashboard";
+import { HomeDashboard } from "@/home/HomeDashboard";
 
 export default function Page() {
   return <HomeDashboard />;

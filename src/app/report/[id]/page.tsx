@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AncReport } from "../../../src/report/AncReport";
+import { AncReport } from "@/report/AncReport";
 
 /** /report/<appointment-id> renders a specific ANC report. */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {

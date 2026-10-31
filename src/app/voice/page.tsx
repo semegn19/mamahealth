@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { VoiceCheckin } from "../../src/voice/VoiceCheckin";
+import { VoiceCheckin } from "@/voice/VoiceCheckin";
 
 export default function Page() {
   return <VoiceCheckin />;
