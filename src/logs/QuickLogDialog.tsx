@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   Apple,
   Beef,
@@ -16,6 +15,7 @@ import {
 import { useProfile } from "../settings/profileStore";
 import { useManualFood, useManualSupplements } from "./quickLogStore";
 import { useTranslation } from "../components/languageStore";
+import { ModalDialog } from "../components/ModalDialog";
 
 /** Food groups used by the hand log (kept in sync with the ANC report). */
 export const FOOD_GROUPS_FOR_LOG = [
@@ -89,46 +89,6 @@ export function QuickLogDialog({
     setGroups([]);
   }, [open, initialScreen]);
 
-  useEffect(() => {
-    if (!open) return;
-    restoreFocusRef.current = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const focusTimer = window.setTimeout(() => closeRef.current?.focus(), 60);
-    return () => {
-      window.clearTimeout(focusTimer);
-      document.body.style.overflow = previousOverflow;
-      if (!suppressFocusRestore.current) restoreFocusRef.current?.focus?.();
-      suppressFocusRestore.current = false;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-      }
-      if (event.key !== "Tab") return;
-      const controls = panelRef.current?.querySelectorAll<HTMLElement>(
-        'button:not(:disabled), input:not(:disabled), a[href], [tabindex="0"]',
-      );
-      if (!controls?.length) return;
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
   if (!open) return null;
 
   const saveSupplementAnswers = () => {
@@ -196,22 +156,11 @@ export function QuickLogDialog({
     setScreen("choose");
   };
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="quick-log-title"
-      className="fixed inset-0 z-[100] isolate flex items-end justify-center p-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))] sm:items-center sm:p-6"
-      onClick={onClose}
-    >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[#3b3226]/30 dark:bg-black/72 backdrop-blur-md"
-      />
+  return (
+    <ModalDialog open={open} onClose={onClose} ariaLabelledBy="quick-log-title">
       <div
         ref={panelRef}
         className="report-sheet relative max-h-[calc(100dvh-2rem)] w-full max-w-[440px] overflow-y-auto overscroll-contain rounded-[30px] border border-white/80 bg-[#fbf6ec]/[0.98] p-6 shadow-[0_18px_60px_-20px_rgba(85,55,18,0.5)] backdrop-blur-xl dark:border-[#e5be79]/22 dark:bg-[#221c15]/[0.98] dark:shadow-[0_24px_64px_-18px_rgba(0,0,0,0.88)]"
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
           {screen !== "choose" && screen !== "saved" ? (
@@ -486,7 +435,6 @@ export function QuickLogDialog({
           </div>
         )}
       </div>
-    </div>,
-    document.body,
+    </ModalDialog>
   );
 }

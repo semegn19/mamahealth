@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "../components/languageStore";
+import { ModalDialog } from "../components/ModalDialog";
 
 export function JourneyModal() {
   const { t } = useTranslation();
@@ -13,17 +14,6 @@ export function JourneyModal() {
     return () => window.removeEventListener("mama-health-open-journey-modal", onOpen);
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
-
-  if (!open) return null;
-
   const trimesters = [
     { phase: t("landing.tri1"), detail: t("landing.tri1Sub") },
     { phase: t("landing.tri2"), detail: t("landing.tri2Sub") },
@@ -31,16 +21,12 @@ export function JourneyModal() {
   ];
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-md dark:bg-black/70"
-      onClick={() => setOpen(false)}
+    <ModalDialog
+      open={open}
+      onClose={() => setOpen(false)}
+      ariaLabelledBy="journey-modal-title"
     >
-      <div
-        className="relative w-full max-w-lg rounded-3xl border border-white/80 bg-[#f8f5ee]/95 p-7 shadow-[0_20px_60px_rgba(140,105,45,0.3)] backdrop-blur-2xl sm:p-9 dark:border-[#e5be79]/22 dark:bg-[#221c15]/96 dark:shadow-[0_24px_64px_rgba(0,0,0,0.85)]"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="relative w-full max-w-lg rounded-3xl border border-white/80 bg-[#f8f5ee]/95 p-7 shadow-[0_20px_60px_rgba(140,105,45,0.3)] backdrop-blur-2xl sm:p-9 dark:border-[#e5be79]/22 dark:bg-[#221c15]/96 dark:shadow-[0_24px_64px_rgba(0,0,0,0.85)]">
         <button
           onClick={() => setOpen(false)}
           className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full bg-black/5 text-[#4a3f30] transition hover:bg-black/10 dark:bg-white/10 dark:text-[#f0e4ce] dark:hover:bg-white/20"
@@ -53,7 +39,10 @@ export function JourneyModal() {
           {t("landing.modalTag")}
         </span>
 
-        <h3 className="mt-3 text-2xl font-medium tracking-tight text-[#3b3226] sm:text-3xl dark:text-[#f5ede0]">
+        <h3
+          id="journey-modal-title"
+          className="mt-3 text-2xl font-medium tracking-tight text-[#3b3226] sm:text-3xl dark:text-[#f5ede0]"
+        >
           {t("landing.modalTitle")}
         </h3>
 
@@ -92,6 +81,6 @@ export function JourneyModal() {
           </button>
         </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 }

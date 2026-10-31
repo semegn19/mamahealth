@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { HomeTopBar } from "@/components/HomeTopBar";
+import { ModalDialog } from "@/components/ModalDialog";
 import { useTranslation } from "@/components/languageStore";
 import {
   dateKey,
@@ -148,14 +149,6 @@ function ItemEditor({
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const update = (patch: Partial<CalendarItem>) => {
     setDraft((current) => ({ ...current, ...patch }));
     setError("");
@@ -183,16 +176,13 @@ function ItemEditor({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="calendar-editor-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-[#4a3416]/26 dark:bg-black/66 px-3 pt-12 backdrop-blur-md sm:items-center sm:p-6"
-      onClick={onClose}
+    <ModalDialog
+      open={true}
+      onClose={onClose}
+      ariaLabelledBy="calendar-editor-title"
     >
       <div
         className="report-sheet home-glass-warm max-h-[90dvh] w-full max-w-[440px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]"
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <div>
@@ -360,7 +350,7 @@ function ItemEditor({
           </div>
         </form>
       </div>
-    </div>
+    </ModalDialog>
   );
 }
 

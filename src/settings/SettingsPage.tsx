@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { BottomNav } from "../components/BottomNav";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { ModalDialog } from "../components/ModalDialog";
 import { useProfile, type Supplement } from "./profileStore";
 import { useTranslation } from "../components/languageStore";
 import { useTheme, type Theme } from "../theme/themeStore";
@@ -241,16 +242,9 @@ function NameEditor({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="name-editor-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-[#3b3226]/20 dark:bg-black/65 px-3 pt-16 backdrop-blur-sm sm:items-center sm:p-6"
-      onClick={onClose}
-    >
+    <ModalDialog open={true} onClose={onClose} ariaLabelledBy="name-editor-title">
       <div
         className="report-sheet w-full max-w-[440px] overflow-y-auto rounded-t-[30px] border border-white/80 bg-[#fbf6ec]/95 p-6 pb-[max(28px,env(safe-area-inset-bottom))] shadow-[0_-18px_50px_-25px_rgba(85,55,18,0.5)] backdrop-blur-xl sm:rounded-[30px] dark:border-[#e5be79]/22 dark:bg-[#221c15]/97 dark:shadow-[0_-18px_50px_-20px_rgba(0,0,0,0.85)]"
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <div>
@@ -327,7 +321,7 @@ function NameEditor({
           </div>
         </form>
       </div>
-    </div>
+    </ModalDialog>
   );
 }
 
@@ -353,14 +347,6 @@ function SupplementEditor({
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!name.trim()) return setError(t("settings.nameRequiredError"));
@@ -373,16 +359,9 @@ function SupplementEditor({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="supplement-editor-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-[#3b3226]/20 dark:bg-black/65 px-3 pt-16 backdrop-blur-sm sm:items-center sm:p-6"
-      onClick={onClose}
-    >
+    <ModalDialog open={true} onClose={onClose} ariaLabelledBy="supplement-editor-title">
       <div
         className="report-sheet w-full max-w-[440px] overflow-y-auto rounded-t-[30px] border border-white/80 bg-[#fbf6ec]/95 p-6 pb-[max(28px,env(safe-area-inset-bottom))] shadow-[0_-18px_50px_-25px_rgba(85,55,18,0.5)] backdrop-blur-xl sm:rounded-[30px] dark:border-[#e5be79]/22 dark:bg-[#221c15]/97 dark:shadow-[0_-18px_50px_-20px_rgba(0,0,0,0.85)]"
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <div>
@@ -497,7 +476,7 @@ function SupplementEditor({
           </div>
         </form>
       </div>
-    </div>
+    </ModalDialog>
   );
 }
 
@@ -526,16 +505,14 @@ function ConfirmDialog({
   const cancelText = onCancelLabel ?? t("common.cancel");
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#3b3226]/25 dark:bg-black/68 px-4 backdrop-blur-sm"
-      onClick={onCancel}
+    <ModalDialog
+      open={true}
+      onClose={onCancel}
+      ariaLabelledBy="confirm-title"
+      containerClassName="max-w-[380px]"
     >
       <div
-        className="report-sheet w-full max-w-[380px] rounded-[26px] border border-white/80 bg-[#fbf6ec]/97 p-6 shadow-[0_18px_50px_-22px_rgba(85,55,18,0.55)] backdrop-blur-xl dark:border-[#e5be79]/22 dark:bg-[#221c15]/97 dark:shadow-[0_20px_54px_-18px_rgba(0,0,0,0.85)]"
-        onClick={(event) => event.stopPropagation()}
+        className="report-sheet w-full rounded-[26px] border border-white/80 bg-[#fbf6ec]/97 p-6 shadow-[0_18px_50px_-22px_rgba(85,55,18,0.55)] backdrop-blur-xl dark:border-[#e5be79]/22 dark:bg-[#221c15]/97 dark:shadow-[0_20px_54px_-18px_rgba(0,0,0,0.85)]"
       >
         <h2
           id="confirm-title"
@@ -567,7 +544,7 @@ function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 }
 

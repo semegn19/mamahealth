@@ -2,6 +2,7 @@
 
 import { AlertTriangle, X } from "lucide-react";
 import { useTranslation } from "./languageStore";
+import { ModalDialog } from "./ModalDialog";
 
 /** A single answered (or skipped) check-in question, as captured by voice. */
 export type CheckinEntry = {
@@ -60,16 +61,14 @@ export function CheckinReportSheet({
   const defaultEmpty = emptyMessage ?? t("logs.emptyDetail");
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-[#3b3226]/20 dark:bg-black/68 px-3 pt-16 backdrop-blur-sm sm:items-center sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="checkin-report-title"
-      onClick={onClose}
+    <ModalDialog
+      open={open}
+      onClose={onClose}
+      ariaLabelledBy="checkin-report-title"
+      containerClassName="max-w-[460px]"
     >
       <div
-        className="report-sheet max-h-[84dvh] w-full max-w-[460px] overflow-y-auto rounded-t-[30px] border border-white/80 bg-[#f3ecdf]/96 p-5 pb-8 shadow-[0_-18px_50px_-25px_rgba(85,55,18,0.5)] backdrop-blur-xl sm:rounded-[30px] sm:p-6 dark:border-[#e5be79]/20 dark:bg-[#15120e]/96 dark:shadow-[0_-18px_50px_-20px_rgba(0,0,0,0.85)]"
-        onClick={(event) => event.stopPropagation()}
+        className="report-sheet max-h-[84dvh] w-full overflow-y-auto rounded-t-[30px] border border-white/80 bg-[#f3ecdf]/96 p-5 pb-8 shadow-[0_-18px_50px_-25px_rgba(85,55,18,0.5)] backdrop-blur-xl sm:rounded-[30px] sm:p-6 dark:border-[#e5be79]/20 dark:bg-[#15120e]/96 dark:shadow-[0_-18px_50px_-20px_rgba(0,0,0,0.85)]"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -190,6 +189,6 @@ export function CheckinReportSheet({
           </section>
         </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 }

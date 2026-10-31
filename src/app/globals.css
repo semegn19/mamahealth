@@ -110,6 +110,43 @@ html.theme-smooth-transition *::after {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Modern HTML5 Dialog & Light Dismiss                                 */
+/* ------------------------------------------------------------------ */
+
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgba(59, 50, 38, 0.38);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+html.dark dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+dialog.app-dialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  max-width: 100vw;
+  max-height: 100dvh;
+  margin: auto;
+  outline: none;
+}
+
+dialog.app-dialog:not([open]) {
+  display: none;
+}
+
 @keyframes float-a {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(40px, -30px) scale(1.08); }
