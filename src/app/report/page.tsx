@@ -6,4 +6,7 @@ export default function Page() {
   return <AncReport reportId="third-appointment" />;
 }
 
-export const metadata: Metadata = { title: "ANC report — Mama Health" };
+export const metadata: Metadata = {
+  title: "Latest ANC Report — Mama Health",
+  description: "Review your latest antenatal check-in summary and health metrics.",
+};

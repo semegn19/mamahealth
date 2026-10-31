@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { BotanicalArt } from "./BotanicalIllustration";
 

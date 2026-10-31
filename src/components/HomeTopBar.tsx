@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Bell } from "lucide-react";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useProfile } from "../settings/profileStore";
@@ -25,9 +26,12 @@ export function HomeTopBar({ now = new Date() }: { now?: Date }) {
         aria-label="Open settings"
         className="flex items-center gap-3 rounded-full text-left transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
       >
-        <img
+        <Image
           src="/images/avatar.jpg"
-          alt=""
+          alt={profile.name}
+          width={48}
+          height={48}
+          priority
           className="h-12 w-12 rounded-full object-cover ring-2 ring-white dark:ring-[#e5be79]/35"
         />
         <div>

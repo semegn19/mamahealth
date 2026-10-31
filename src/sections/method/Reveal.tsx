@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** Slow, soft fade-and-rise as content scrolls into view. Skipped for reduced-motion users. */

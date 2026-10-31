@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Bell,
@@ -646,9 +647,11 @@ export function SettingsPage() {
         </header>
 
         <section aria-label="Profile details" className="mt-7 flex items-start gap-4">
-          <img
+          <Image
             src="/images/avatar.jpg"
-            alt=""
+            alt={profile.name}
+            width={64}
+            height={64}
             className="mt-1 h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-[#e5be79]/35"
           />
           <div className="min-w-0 flex-1">
