@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useTranslation } from "../components/languageStore";
 import {
   CALENDAR_CELLS,
   FOOD_GROUPS,
@@ -25,8 +26,12 @@ export function SeverityCalendar({
   detailsId: string;
   dangerCountsByDay?: Map<number, number>;
 }) {
+  const { t, isAmharic } = useTranslation();
   const { ref, inView } = useInViewOnce<HTMLDivElement>(0.2);
-  const weekdays = ["M", "T", "W", "T", "F", "S", "S"];
+  const weekdays = isAmharic
+    ? ["ሰ", "ማ", "ረ", "ሐ", "ዓ", "ቅ", "እ"]
+    : ["M", "T", "W", "T", "F", "S", "S"];
+
   return (
     <div ref={ref} role="group" aria-label={`Daily symptoms for ${PERIOD.label}`}>
       <div className="grid grid-cols-7 gap-1.5" aria-hidden="true">
@@ -56,18 +61,20 @@ export function SeverityCalendar({
           } else if (severity) {
             cellStyle.backgroundColor = SEVERITY_LEVELS[severity].color;
           }
-          const dateLabel = day.date.toLocaleDateString("en-GB", {
+          const dateLabel = day.date.toLocaleDateString(isAmharic ? "am-ET" : "en-GB", {
             day: "numeric",
             month: "long",
             year: "numeric",
           });
           const description = !day.recorded
-            ? "No check-in recorded"
+            ? (isAmharic ? "ምንም ምዝገባ አልተደረገም" : "No check-in recorded")
             : isDanger
-              ? `${dangerCount} danger sign${dangerCount === 1 ? "" : "s"} recorded`
+              ? (isAmharic ? `${dangerCount} የአደጋ ምልክቶች ተመዝግበዋል` : `${dangerCount} danger sign${dangerCount === 1 ? "" : "s"} recorded`)
               : severity
-                ? `${day.symptoms.length} symptom${day.symptoms.length === 1 ? "" : "s"}, highest severity: ${SEVERITY_LEVELS[severity].label}`
-                : "No symptoms recorded";
+                ? (isAmharic
+                    ? `${day.symptoms.length} ምልክቶች፣ ከፍተኛ ደረጃ፡ ${SEVERITY_LEVELS[severity].label_am || SEVERITY_LEVELS[severity].label}`
+                    : `${day.symptoms.length} symptom${day.symptoms.length === 1 ? "" : "s"}, highest severity: ${SEVERITY_LEVELS[severity].label}`)
+                : (isAmharic ? "ምንም ምልክቶች አልተመዘገቡም" : "No symptoms recorded");
 
           return (
             <button
@@ -123,9 +130,11 @@ function SymptomBarRow({
   index: number;
   active: boolean;
 }) {
+  const { t, isAmharic } = useTranslation();
   const animatedCount = Math.round(
     useCountUp(row.count, { active, duration: 850, delay: index * 90 }),
   );
+  const localizedName = t(`reports.symptomsMap.${row.name}`) || row.name;
 
   return (
     <li
@@ -137,7 +146,7 @@ function SymptomBarRow({
       }}
     >
       <span className="w-[74px] shrink-0 text-[13px] text-[#4a3f30] dark:text-[#dfcfb6]">
-        {row.name}
+        {localizedName}
       </span>
       <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#ecdfc5] dark:bg-[#31271c]">
         <span
@@ -149,8 +158,8 @@ function SymptomBarRow({
         />
       </span>
       <span className="w-[46px] shrink-0 text-right text-[12px] text-[#85735a] dark:text-[#9c8b72]">
-        <span className="sr-only">{row.count} days</span>
-        <span aria-hidden="true">{animatedCount}d</span>
+        <span className="sr-only">{row.count} {isAmharic ? "ቀናት" : "days"}</span>
+        <span aria-hidden="true">{animatedCount}{isAmharic ? "ቀ" : "d"}</span>
       </span>
     </li>
   );

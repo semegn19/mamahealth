@@ -24,10 +24,10 @@ export const FOOD_GROUPS = [
 
 export type Severity = 1 | 2 | 3;
 
-export const SEVERITY_LEVELS: Record<Severity, { label: string; color: string }> = {
-  1: { label: "Mild", color: "#f2ddb0" },
-  2: { label: "Moderate", color: "#dda95f" },
-  3: { label: "Severe", color: "#b3853c" },
+export const SEVERITY_LEVELS: Record<Severity, { label: string; label_am: string; color: string }> = {
+  1: { label: "Mild", label_am: "ቀላል", color: "#f2ddb0" },
+  2: { label: "Moderate", label_am: "መካከለኛ", color: "#dda95f" },
+  3: { label: "Severe", label_am: "ከፍተኛ", color: "#b3853c" },
 };
 
 export type DayRecord = {

@@ -14,18 +14,38 @@ export type CheckinLog = {
 };
 
 const Q = {
-  feeling: "How are you feeling today?",
-  symptoms: "Any symptoms since yesterday?",
-  food: "What did you eat today?",
-  sleep: "How did you sleep?",
+  feeling: {
+    en: "How are you feeling today?",
+    am: "ዛሬ እንዴት ነዎት?",
+  },
+  symptoms: {
+    en: "Any symptoms since yesterday?",
+    am: "ከትላንት ወዲህ የተሰማዎት የጤና ለውጥ አለ?",
+  },
+  food: {
+    en: "What did you eat today?",
+    am: "ዛሬ ምን ተመገቡ?",
+  },
+  sleep: {
+    en: "How did you sleep?",
+    am: "እንቅልፍዎ እንዴት ነበር?",
+  },
 } as const;
 
 function entry(
-  question: string,
-  answer: string | null,
+  question: { en: string; am: string },
+  answer_en: string | null,
+  answer_am: string | null,
   severity: number | null,
 ): CheckinEntry {
-  return { question, answer, severity, skipped: answer === null };
+  return {
+    question: question.en,
+    question_am: question.am,
+    answer: answer_en,
+    answer_am,
+    severity,
+    skipped: answer_en === null,
+  };
 }
 
 export const CHECKIN_LOGS: CheckinLog[] = [
@@ -34,14 +54,31 @@ export const CHECKIN_LOGS: CheckinLog[] = [
     date: new Date(2025, 10, 8, 7, 48),
     session: "Morning",
     entries: [
-      entry(Q.feeling, "A severe headache that has not eased after resting.", 88),
-      entry(Q.symptoms, "Headache has lasted more than six hours, with some blurred vision.", 86),
-      entry(Q.food, "Toast, yogurt, and water.", 15),
+      entry(
+        Q.feeling,
+        "A severe headache that has not eased after resting.",
+        "እረፍት ከወሰድኩ በኋላም ያልቀነሰ ከባድ ራስ ምታት።",
+        88,
+      ),
+      entry(
+        Q.symptoms,
+        "Headache has lasted more than six hours, with some blurred vision.",
+        "ራስ ምታቱ ከስድስት ሰዓት በላይ ቆይቷል፣ ከዓይን ብዥታ ጋር።",
+        86,
+      ),
+      entry(
+        Q.food,
+        "Toast, yogurt, and water.",
+        "ዳቦ፣ እርጎ እና ውሃ።",
+        15,
+      ),
     ],
     dangerSigns: [
       {
         name: "Severe headache",
+        name_am: "ከፍተኛ ራስ ምታት",
         detail: "Lasting 6+ hours, not eased by rest; blurred vision also reported.",
+        detail_am: "ከ6 ሰዓታት በላይ የቆየ፣ በእረፍት ያልቀነሰ እና የዓይን ብዥታ የታየበት።",
         severity: "Critical",
       },
     ],
@@ -51,9 +88,24 @@ export const CHECKIN_LOGS: CheckinLog[] = [
     date: new Date(2025, 10, 7, 8, 12),
     session: "Morning",
     entries: [
-      entry(Q.feeling, "Much better today, energy is back.", 20),
-      entry(Q.symptoms, "No nausea since breakfast, just mild fatigue.", 30),
-      entry(Q.food, "Oatmeal with banana, eggs, and a glass of milk.", 10),
+      entry(
+        Q.feeling,
+        "Much better today, energy is back.",
+        "ዛሬ በጣም ተሽሎኛል፣ ብርታት ተሰምቶኛል።",
+        20,
+      ),
+      entry(
+        Q.symptoms,
+        "No nausea since breakfast, just mild fatigue.",
+        "ከቁርስ በኋላ ማቅለሽለሽ አልነበረም፣ ቀላል ድካም ብቻ።",
+        30,
+      ),
+      entry(
+        Q.food,
+        "Oatmeal with banana, eggs, and a glass of milk.",
+        "አጃ ከሙዝ ጋር፣ እንቁላል እና አንድ ብርጭቆ ወተት።",
+        10,
+      ),
     ],
   },
   {
@@ -61,9 +113,24 @@ export const CHECKIN_LOGS: CheckinLog[] = [
     date: new Date(2025, 10, 6, 19, 40),
     session: "Evening",
     entries: [
-      entry(Q.feeling, "Tired but steady, a bit of lower back pain.", 45),
-      entry(Q.symptoms, "Back pain eased after resting, no headaches.", 40),
-      entry(Q.food, "Lentil stew with rice and steamed vegetables.", 15),
+      entry(
+        Q.feeling,
+        "Tired but steady, a bit of lower back pain.",
+        "ትንሽ ድካም እና የወገብ ህመም አለብኝ።",
+        45,
+      ),
+      entry(
+        Q.symptoms,
+        "Back pain eased after resting, no headaches.",
+        "ካረፍኩ በኋላ የወገቤ ህመም ቀለል ብሏል፣ ራስ ምታት የለም።",
+        40,
+      ),
+      entry(
+        Q.food,
+        "Lentil stew with rice and steamed vegetables.",
+        "የምስር ወጥ ከሩዝ እና ከአትክልት ጋር።",
+        15,
+      ),
     ],
   },
   {
@@ -71,9 +138,24 @@ export const CHECKIN_LOGS: CheckinLog[] = [
     date: new Date(2025, 10, 5, 8, 5),
     session: "Morning",
     entries: [
-      entry(Q.feeling, "A little queasy this morning, otherwise okay.", 55),
-      entry(Q.symptoms, "Mild nausea and heartburn after dinner yesterday.", 50),
-      entry(Q.food, "Toast, yogurt, chicken salad, and an orange.", 25),
+      entry(
+        Q.feeling,
+        "A little queasy this morning, otherwise okay.",
+        "ጠዋት ላይ ትንሽ ማቅለሽለሽ ተሰምቶኝ ነበር፣ በአጠቃላይ ግን ደህና ነኝ።",
+        55,
+      ),
+      entry(
+        Q.symptoms,
+        "Mild nausea and heartburn after dinner yesterday.",
+        "ትናንት ከእራት በኋላ ትንሽ ማቅለሽለሽ እና የሆድ ቃጠሎ ነበረኝ።",
+        50,
+      ),
+      entry(
+        Q.food,
+        "Toast, yogurt, chicken salad, and an orange.",
+        "ዳቦ፣ እርጎ፣ የዶሮ ሰላጣ እና ብርቱካን።",
+        25,
+      ),
     ],
   },
   {
@@ -81,9 +163,19 @@ export const CHECKIN_LOGS: CheckinLog[] = [
     date: new Date(2025, 10, 4, 20, 15),
     session: "Evening",
     entries: [
-      entry(Q.feeling, null, null),
-      entry(Q.symptoms, "Feet were a bit swollen by evening.", 60),
-      entry(Q.food, "Fish, rice, carrots, and a mango.", 20),
+      entry(Q.feeling, null, null, null),
+      entry(
+        Q.symptoms,
+        "Feet were a bit swollen by evening.",
+        "ምሽት ላይ እግሮቼ ትንሽ አብጠው ነበር።",
+        60,
+      ),
+      entry(
+        Q.food,
+        "Fish, rice, carrots, and a mango.",
+        "ዓሳ፣ ሩዝ፣ ካሮት እና ማንጎ።",
+        20,
+      ),
     ],
   },
   {
@@ -91,28 +183,49 @@ export const CHECKIN_LOGS: CheckinLog[] = [
     date: new Date(2025, 10, 3, 8, 30),
     session: "Morning",
     entries: [
-      entry(Q.feeling, "Good energy, slept through the night.", 15),
-      entry(Q.symptoms, "No new symptoms, just normal tiredness.", 20),
-      entry(Q.food, "Porridge with milk, an egg, and berries.", 10),
+      entry(
+        Q.feeling,
+        "Good energy, slept through the night.",
+        "ጥሩ ስሜት ይሰማኛል፣ ሌሊቱን በደንብ ተኝቻለሁ።",
+        15,
+      ),
+      entry(
+        Q.symptoms,
+        "No new symptoms, just normal tiredness.",
+        "ምንም አዲስ ምልክት የለም፣ የተለመደው ድካም ብቻ።",
+        20,
+      ),
+      entry(
+        Q.food,
+        "Porridge with milk, an egg, and berries.",
+        "ገንፎ ከወተት ጋር፣ እንቁላል እና ፍራፍሬ።",
+        10,
+      ),
     ],
   },
   {
     id: "2025-11-02",
-    date: new Date(2025, 10, 2, 18, 55),
-    session: "Evening",
+    date: new Date(2025, 10, 2, 7, 55),
+    session: "Morning",
     entries: [
-      entry(Q.feeling, "Headache started in the afternoon, resting now.", 65),
-      entry(Q.symptoms, "Mild headache and some dizziness when standing up.", 70),
-      entry(Q.food, "Vegetable soup, wholegrain bread, and milk.", 30),
+      entry(
+        Q.feeling,
+        "Woke up feeling rested.",
+        "ጥሩ እንቅልፍ ተኝቼ ነው የነቃሁት።",
+        10,
+      ),
+      entry(
+        Q.symptoms,
+        "No symptoms today.",
+        "ዛሬ ምንም ምልክት አልታየብኝም።",
+        5,
+      ),
+      entry(
+        Q.food,
+        "Injera with shiro and vegetable salad.",
+        "እንጀራ በሽሮ እና የአትክልት ሰላጣ።",
+        12,
+      ),
     ],
   },
 ];
-
-export function getCheckinLog(id?: string | null) {
-  return CHECKIN_LOGS.find((log) => log.id === id) ?? null;
-}
-
-/** How many of a log's questions were answered (not skipped). */
-export function answeredCount(log: CheckinLog) {
-  return log.entries.filter((entry) => !entry.skipped).length;
-}

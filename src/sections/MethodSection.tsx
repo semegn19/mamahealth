@@ -1,32 +1,44 @@
+"use client";
+
+import { useMemo } from "react";
 import { CareIllustration, type CareArt } from "./method/CareIllustration";
 import { Reveal } from "./method/Reveal";
 import { LearnMoreButton } from "./method/LearnMoreButton";
-
-const steps = [
-  {
-    title: "A gentle morning check-in",
-    body: "Mood, sleep, blood pressure and symptoms, gathered in about a minute and shaped into a clear picture your midwife can read at a glance.",
-    meta: "About a minute · every morning",
-    orbSide: "right" as const,
-    art: "morning" as CareArt,
-  },
-  {
-    title: "Kick counts & contraction timing",
-    body: "Simple, rhythmic logging that learns your baby's usual patterns, and quietly lets you know when a call to your midwife is worth making.",
-    meta: "One tap · learns your rhythm",
-    orbSide: "left" as const,
-    art: "kicks" as CareArt,
-  },
-  {
-    title: "A midwife, whenever you need one",
-    body: "Real registered midwives, not scripts. Every conversation is kept in your shared care record, so you never have to explain yourself twice.",
-    meta: "Replies in minutes · day or night",
-    orbSide: "right" as const,
-    art: "midwife" as CareArt,
-  },
-];
+import { useTranslation } from "../components/languageStore";
 
 export function MethodSection({ onLearnMore }: { onLearnMore?: () => void }) {
+  const { t } = useTranslation();
+
+  const steps = useMemo(
+    () => [
+      {
+        id: "step1",
+        title: t("landing.step1Title"),
+        body: t("landing.step1Body"),
+        meta: t("landing.step1Meta"),
+        orbSide: "right" as const,
+        art: "morning" as CareArt,
+      },
+      {
+        id: "step2",
+        title: t("landing.step2Title"),
+        body: t("landing.step2Body"),
+        meta: t("landing.step2Meta"),
+        orbSide: "left" as const,
+        art: "kicks" as CareArt,
+      },
+      {
+        id: "step3",
+        title: t("landing.step3Title"),
+        body: t("landing.step3Body"),
+        meta: t("landing.step3Meta"),
+        orbSide: "right" as const,
+        art: "midwife" as CareArt,
+      },
+    ],
+    [t],
+  );
+
   return (
     <section
       id="care"
@@ -43,11 +55,12 @@ export function MethodSection({ onLearnMore }: { onLearnMore?: () => void }) {
       <div className="relative mx-auto max-w-[760px] px-6 pt-28 text-center sm:px-10 lg:pt-40">
         <Reveal>
           <h2 className="text-[clamp(34px,5vw,64px)] font-light leading-[1.05] tracking-[-0.03em] text-[#4a3f30] dark:text-[#f5ede0]">
-            Care that moves{" "}
-            <span className="text-[#b98a3e] dark:text-[#e5be79]">with you,</span> week by week.
+            {t("landing.methodTitlePre")}{" "}
+            <span className="text-[#b98a3e] dark:text-[#e5be79]">{t("landing.methodTitleHighlight")}</span>{" "}
+            {t("landing.methodTitlePost")}
           </h2>
           <p className="mx-auto mt-6 max-w-[48ch] text-[16px] leading-[1.75] text-[#6f6149] dark:text-[#b9a88e]">
-            Gentle tools that fit into your day. No dashboards to decode, no alarms to dread.
+            {t("landing.methodSub")}
           </p>
         </Reveal>
       </div>
@@ -61,7 +74,7 @@ export function MethodSection({ onLearnMore }: { onLearnMore?: () => void }) {
           const orbOnRight = s.orbSide === "right";
           return (
             <div
-              key={s.title}
+              key={s.id}
               className="grid grid-cols-1 items-center gap-6 py-14 lg:grid-cols-2 lg:gap-24 lg:py-24"
             >
               {/* TEXT */}
@@ -82,7 +95,7 @@ export function MethodSection({ onLearnMore }: { onLearnMore?: () => void }) {
                     onClick={onLearnMore}
                     className="group mt-7 inline-flex items-center gap-2 rounded-full text-[14px] text-[#8d6a2a] outline-none transition-colors duration-500 hover:text-[#4a3f30] focus-visible:ring-2 focus-visible:ring-[#caa152] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f5eee0] dark:text-[#e5be79] dark:hover:text-[#f5ede0] dark:focus-visible:ring-offset-[#15120e]"
                   >
-                    Learn more
+                    {t("landing.learnMore")}
                     <span className="transition-transform duration-500 ease-out group-hover:translate-x-1">
                       →
                     </span>

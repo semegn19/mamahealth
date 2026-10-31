@@ -1,6 +1,7 @@
 export type CalendarItem = {
   id: string;
   title: string;
+  title_am?: string;
   type: "event" | "task";
   date: string;
   time: string;
@@ -34,10 +35,42 @@ export function starterItems(today: Date): CalendarItem[] {
     return dateKey(date);
   };
   return [
-    { id: "sample-1", title: "Midwife appointment", type: "event", date: next(0), time: "10:30", reminderAt: "" },
-    { id: "sample-2", title: "Take prenatal vitamins", type: "task", date: next(1), time: "08:00", reminderAt: "" },
-    { id: "sample-3", title: "Blood pressure check", type: "task", date: next(3), time: "09:00", reminderAt: "" },
-    { id: "sample-4", title: "Prenatal class", type: "event", date: next(5), time: "16:00", reminderAt: "" },
+    {
+      id: "sample-1",
+      title: "Midwife appointment",
+      title_am: "የአዋላጅ ቀጠሮ",
+      type: "event",
+      date: next(0),
+      time: "10:30",
+      reminderAt: "",
+    },
+    {
+      id: "sample-2",
+      title: "Take prenatal vitamins",
+      title_am: "የቅድመ ወሊድ ቫይታሚን መውሰድ",
+      type: "task",
+      date: next(1),
+      time: "08:00",
+      reminderAt: "",
+    },
+    {
+      id: "sample-3",
+      title: "Blood pressure check",
+      title_am: "የደም ግፊት ምርመራ",
+      type: "task",
+      date: next(3),
+      time: "09:00",
+      reminderAt: "",
+    },
+    {
+      id: "sample-4",
+      title: "Prenatal class",
+      title_am: "የቅድመ ወሊድ ትምህርት",
+      type: "event",
+      date: next(5),
+      time: "16:00",
+      reminderAt: "",
+    },
   ];
 }
 
@@ -52,7 +85,15 @@ export function loadItems(today: Date): CalendarItem[] {
     const saved = localStorage.getItem(ITEMS_KEY) ?? localStorage.getItem(LEGACY_ITEMS_KEY);
     if (saved !== null) {
       const parsed: unknown = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed as CalendarItem[];
+      if (Array.isArray(parsed)) {
+        return (parsed as CalendarItem[]).map((item) => {
+          const starter = starterItems(today).find((s) => s.id === item.id);
+          return {
+            ...item,
+            title_am: starter?.title_am ?? item.title_am,
+          };
+        });
+      }
     }
   } catch {
     // Storage may be disabled; fall back to prototype events.

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { HomeTopBar } from "@/components/HomeTopBar";
+import { useTranslation } from "@/components/languageStore";
 import {
   dateKey,
   DUE_DATE_KEY,
@@ -27,27 +28,32 @@ import {
   type CalendarItem,
 } from "./calendarData";
 
-const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
-const monthTitle = (date: Date) =>
-  date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-const dayTitle = (date: Date) =>
-  date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+const WEEKDAYS_EN = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEKDAYS_AM = ["እ", "ሰ", "ማ", "ረ", "ሐ", "ዓ", "ቅ"];
 
-function weekLabel(start: Date) {
+const monthTitle = (date: Date, isAmharic: boolean) =>
+  date.toLocaleDateString(isAmharic ? "am-ET" : "en-US", { month: "long", year: "numeric" });
+
+const dayTitle = (date: Date, isAmharic: boolean) =>
+  date.toLocaleDateString(isAmharic ? "am-ET" : "en-US", { weekday: "long", month: "short", day: "numeric" });
+
+function weekLabel(start: Date, isAmharic: boolean) {
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
-  return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  const locale = isAmharic ? "am-ET" : "en-US";
+  return `${start.toLocaleDateString(locale, { month: "short", day: "numeric" })} – ${end.toLocaleDateString(locale, { month: "short", day: "numeric" })}`;
 }
 
-function dueCountdown(due: Date, today: Date) {
+function dueCountdown(due: Date, today: Date, t: (path: string, params?: Record<string, string | number>) => string) {
   const days = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-  if (days < 0) return `Due date was ${Math.abs(days)} day${days === -1 ? "" : "s"} ago`;
-  if (days === 0) return "Your due date is today";
+  if (days < 0) return t("calendar.dueWasDays", { days: Math.abs(days) });
+  if (days === 0) return t("calendar.dueToday");
   const weeks = Math.floor(days / 7);
   const extraDays = days % 7;
-  return `You are due in ${weeks} week${weeks === 1 ? "" : "s"}${
-    extraDays ? `, ${extraDays} day${extraDays === 1 ? "" : "s"}` : ""
-  } from today`;
+  if (extraDays > 0) {
+    return t("calendar.dueInWeeksDays", { weeks, days: extraDays });
+  }
+  return t("calendar.dueInWeeks", { weeks });
 }
 
 function AgendaItems({
@@ -57,49 +63,56 @@ function AgendaItems({
   items: CalendarItem[];
   onEdit: (item: CalendarItem) => void;
 }) {
+  const { t, isAmharic } = useTranslation();
+
   return (
     <ul className="divide-y divide-[#b98a3e]/15 dark:divide-[#e5be79]/14">
-      {items.map((item) => (
-        <li key={item.id}>
-          <button
-            type="button"
-            onClick={() => onEdit(item)}
-            aria-label={`Edit ${item.type}: ${item.title}`}
-            aria-haspopup="dialog"
-            className="group flex min-h-[72px] w-full items-center gap-3 rounded-xl bg-transparent px-1.5 py-3 text-left transition-colors duration-200 hover:bg-white/25 dark:hover:bg-white/6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79] motion-reduce:transition-none"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d9ab5e]/15 text-[#7b5b2b] dark:bg-[#e5be79]/16 dark:text-[#e5be79]">
-              {item.type === "event" ? (
-                <CalendarDays size={17} strokeWidth={1.8} aria-hidden="true" />
-              ) : (
-                <Check size={17} strokeWidth={1.8} aria-hidden="true" />
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block break-words text-[15px] font-medium leading-snug text-[#3b3226] dark:text-[#f5ede0]">
-                {item.title}
-              </span>
-              <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-[#6f6149] dark:text-[#b9a88e]">
-                <Clock3 size={12} aria-hidden="true" />
-                {item.time}
-                <span aria-hidden="true">/</span>
-                <span className="capitalize">{item.type}</span>
-                {item.reminderAt && (
-                  <span className="ml-1 inline-flex items-center gap-1">
-                    <Bell size={12} aria-hidden="true" />
-                    Reminder set
-                  </span>
+      {items.map((item) => {
+        const title = isAmharic ? (item.title_am ?? item.title) : item.title;
+        const typeLabel = item.type === "event" ? t("calendar.eventType") : t("calendar.taskType");
+
+        return (
+          <li key={item.id}>
+            <button
+              type="button"
+              onClick={() => onEdit(item)}
+              aria-label={`${t("common.edit")} ${typeLabel}: ${title}`}
+              aria-haspopup="dialog"
+              className="group flex min-h-[72px] w-full items-center gap-3 rounded-xl bg-transparent px-1.5 py-3 text-left transition-colors duration-200 hover:bg-white/25 dark:hover:bg-white/6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79] motion-reduce:transition-none"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d9ab5e]/15 text-[#7b5b2b] dark:bg-[#e5be79]/16 dark:text-[#e5be79]">
+                {item.type === "event" ? (
+                  <CalendarDays size={17} strokeWidth={1.8} aria-hidden="true" />
+                ) : (
+                  <Check size={17} strokeWidth={1.8} aria-hidden="true" />
                 )}
               </span>
-            </span>
-            <Pencil
-              size={15}
-              className="shrink-0 text-[#85735a] transition-colors group-hover:text-[#6f5a35] dark:text-[#9c8b72] dark:group-hover:text-[#e5be79]"
-              aria-hidden="true"
-            />
-          </button>
-        </li>
-      ))}
+              <span className="min-w-0 flex-1">
+                <span className="block break-words text-[15px] font-medium leading-snug text-[#3b3226] dark:text-[#f5ede0]">
+                  {title}
+                </span>
+                <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-[#6f6149] dark:text-[#b9a88e]">
+                  <Clock3 size={12} aria-hidden="true" />
+                  {item.time}
+                  <span aria-hidden="true">/</span>
+                  <span className="capitalize">{typeLabel}</span>
+                  {item.reminderAt && (
+                    <span className="ml-1 inline-flex items-center gap-1">
+                      <Bell size={12} aria-hidden="true" />
+                      {t("calendar.remindMe")}
+                    </span>
+                  )}
+                </span>
+              </span>
+              <Pencil
+                size={15}
+                className="shrink-0 text-[#85735a] transition-colors group-hover:text-[#6f5a35] dark:text-[#9c8b72] dark:group-hover:text-[#e5be79]"
+                aria-hidden="true"
+              />
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -117,6 +130,7 @@ function ItemEditor({
   onSave: (item: CalendarItem) => void;
   onDelete: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<CalendarItem>(
     () =>
       initial ?? {
@@ -147,16 +161,16 @@ function ItemEditor({
 
   const save = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!draft.title.trim()) return setError("Give this a title first.");
-    if (!draft.date || !draft.time) return setError("Choose a date and time.");
+    if (!draft.title.trim()) return setError(t("calendar.titleRequired"));
+    if (!draft.date || !draft.time) return setError(t("calendar.dateTimeRequired"));
     if (reminderEnabled) {
-      if (!draft.reminderAt) return setError("Choose a date and time for the reminder.");
+      if (!draft.reminderAt) return setError(t("calendar.reminderRequired"));
       const reminder = new Date(draft.reminderAt).getTime();
       const scheduled = new Date(`${draft.date}T${draft.time}`).getTime();
       if (!Number.isFinite(reminder) || reminder <= Date.now())
-        return setError("Set the reminder for a future time.");
+        return setError(t("calendar.reminderFuture"));
       if (reminder > scheduled)
-        return setError("Set the reminder for or before the scheduled time.");
+        return setError(t("calendar.reminderBeforeScheduled"));
     }
     onSave({
       ...draft,
@@ -184,13 +198,13 @@ function ItemEditor({
               id="calendar-editor-title"
               className="text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
             >
-              {initial ? "Edit reminder" : "Add to your day"}
+              {initial ? t("calendar.editReminder") : t("calendar.addEvent")}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close editor"
+            aria-label={t("common.close")}
             className="home-icon-solid flex h-10 w-10 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce]"
           >
             <X size={19} strokeWidth={1.8} />
@@ -203,7 +217,7 @@ function ItemEditor({
               htmlFor="item-title"
               className="block text-[13px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]"
             >
-              Title
+              {t("calendar.titleLabel")}
             </label>
             <input
               id="item-title"
@@ -213,14 +227,14 @@ function ItemEditor({
               autoFocus
               value={draft.title}
               onChange={(event) => update({ title: event.target.value })}
-              placeholder="e.g. Midwife appointment"
+              placeholder={t("calendar.titlePlaceholder")}
               className="mt-2 w-full rounded-2xl border border-[#e6d3ad] bg-[#fffdf7] px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#b8834a] focus:ring-2 focus:ring-[#c9a35d]/25 dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
             />
           </div>
 
           <fieldset>
             <legend className="text-[13px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]">
-              Add as
+              {t("calendar.addAs")}
             </legend>
             <div className="mt-2 flex gap-2">
               {(["event", "task"] as const).map((type) => (
@@ -235,7 +249,7 @@ function ItemEditor({
                       : "border border-[#e6d3ad] bg-[#fffdf7] text-[#6f6149] hover:bg-[#fbe7b8] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#c7b69c] dark:hover:bg-[#292118]"
                   }`}
                 >
-                  {type}
+                  {type === "event" ? t("calendar.eventType") : t("calendar.taskType")}
                 </button>
               ))}
             </div>
@@ -247,7 +261,7 @@ function ItemEditor({
                 htmlFor="item-date"
                 className="block text-[13px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]"
               >
-                Date
+                {t("calendar.dateLabel")}
               </label>
               <input
                 id="item-date"
@@ -263,7 +277,7 @@ function ItemEditor({
                 htmlFor="item-time"
                 className="block text-[13px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]"
               >
-                Time
+                {t("calendar.timeLabel")}
               </label>
               <input
                 id="item-time"
@@ -289,7 +303,7 @@ function ItemEditor({
                 className="h-4 w-4 accent-[#b98a3e] dark:accent-[#e5be79]"
               />
               <Bell size={17} strokeWidth={1.8} aria-hidden="true" />
-              Remind me
+              {t("calendar.remindMe")}
             </label>
             {reminderEnabled && (
               <div className="mt-3">
@@ -297,7 +311,7 @@ function ItemEditor({
                   htmlFor="reminder-time"
                   className="block text-[12px] text-[#6f6149] dark:text-[#b9a88e]"
                 >
-                  Reminder date and time
+                  {t("calendar.reminderDateTime")}
                 </label>
                 <input
                   id="reminder-time"
@@ -308,8 +322,7 @@ function ItemEditor({
                   className="mt-2 w-full min-w-0 rounded-xl border border-[#e6d3ad] bg-[#fffdf7] px-3 py-3 text-[14px] text-[#3b3226] outline-none focus:border-[#b8834a] focus:ring-2 focus:ring-[#c9a35d]/25 dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:focus:border-[#e5be79]"
                 />
                 <p className="mt-2 text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
-                  Reminders appear while Mama Health is open. Allow notifications for system alerts
-                  while the page is open.
+                  {t("calendar.reminderHelp")}
                 </p>
               </div>
             )}
@@ -332,7 +345,7 @@ function ItemEditor({
                 className="flex items-center justify-center gap-1 rounded-full border border-[#e8a18f] px-4 py-3 text-[13px] font-medium text-[#9c3a29] transition hover:bg-[#f6e0d8] dark:border-[#c65a45]/60 dark:text-[#f08b75] dark:hover:bg-[#c65a45]/18"
               >
                 <Trash2 size={16} strokeWidth={1.8} aria-hidden="true" />
-                {confirmDelete ? "Confirm delete" : "Delete"}
+                {confirmDelete ? t("calendar.confirmDelete") : t("common.delete")}
               </button>
             )}
             <button
@@ -340,7 +353,7 @@ function ItemEditor({
               className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#4a3f30] px-5 py-3 text-[14px] font-medium text-[#fffaf0] transition hover:bg-[#655039] active:scale-[0.98] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
             >
               <Check size={17} strokeWidth={2} aria-hidden="true" />
-              {initial ? "Save changes" : "Add to calendar"}
+              {initial ? t("calendar.saveChanges") : t("calendar.addToCalendar")}
             </button>
           </div>
         </form>
@@ -350,6 +363,7 @@ function ItemEditor({
 }
 
 export function CalendarPage() {
+  const { t, isAmharic } = useTranslation();
   const today = useMemo(() => new Date(), []);
   const [selected, setSelected] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), today.getDate()),
@@ -365,6 +379,8 @@ export function CalendarPage() {
   const [message, setMessage] = useState("");
   const firedRef = useRef(new Set<string>());
 
+  const weekdays = isAmharic ? WEEKDAYS_AM : WEEKDAYS_EN;
+
   useEffect(() => {
     try {
       localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
@@ -372,6 +388,7 @@ export function CalendarPage() {
       /* In-memory editing still works. */
     }
   }, [items]);
+
   useEffect(() => {
     try {
       localStorage.setItem(DUE_DATE_KEY, dueDate);
@@ -379,6 +396,7 @@ export function CalendarPage() {
       /* In-memory editing still works. */
     }
   }, [dueDate]);
+
   useEffect(() => {
     if (!message) return;
     const timer = window.setTimeout(() => setMessage(""), 4600);
@@ -394,10 +412,11 @@ export function CalendarPage() {
         const key = `${item.id}:${item.reminderAt}`;
         if (when > now || now - when > 60000 || firedRef.current.has(key)) return;
         firedRef.current.add(key);
-        setMessage(`Reminder: ${item.title}`);
+        const title = isAmharic ? (item.title_am ?? item.title) : item.title;
+        setMessage(t("calendar.reminderPrefix", { title }));
         if ("Notification" in window && Notification.permission === "granted") {
           try {
-            new Notification("Mama Health reminder", { body: item.title });
+            new Notification(t("calendar.reminderNotificationTitle"), { body: title });
           } catch {
             /* In-app reminder still appears. */
           }
@@ -411,7 +430,7 @@ export function CalendarPage() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", checkReminders);
     };
-  }, [items]);
+  }, [items, isAmharic, t]);
 
   const monthCells = useMemo(() => {
     const first = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
@@ -424,6 +443,7 @@ export function CalendarPage() {
       ),
     ];
   }, [visibleMonth]);
+
   const selectedWeek = useMemo(() => startOfWeek(selected), [selected]);
   const weekDays = useMemo(
     () =>
@@ -434,10 +454,12 @@ export function CalendarPage() {
       }),
     [selectedWeek],
   );
+
   const plannedDays = weekDays.filter((date) => {
     const key = dateKey(date);
     return key === dueDate || items.some((item) => item.date === key);
   });
+
   const selectedItems = useMemo(
     () =>
       items
@@ -445,10 +467,12 @@ export function CalendarPage() {
         .sort((a, b) => a.time.localeCompare(b.time)),
     [items, selected],
   );
+
   const due = fromDateKey(dueDate);
   const dueText = dueCountdown(
     due,
     new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+    t,
   );
 
   const shiftMonth = (offset: number) => {
@@ -458,6 +482,7 @@ export function CalendarPage() {
   };
   const selectDate = (date: Date) => setSelected(date);
   const editItem = (item: CalendarItem) => setEditor({ key: item.id, item });
+
   const saveItem = (item: CalendarItem) => {
     setItems((current) =>
       current.some((existing) => existing.id === item.id)
@@ -469,17 +494,18 @@ export function CalendarPage() {
     setEditor(null);
     setMessage(
       item.id.startsWith("sample-") || items.some((existing) => existing.id === item.id)
-        ? "Calendar entry updated"
-        : "Added to your calendar",
+        ? t("calendar.entryUpdated")
+        : t("calendar.addedToCalendar"),
     );
     if (item.reminderAt && "Notification" in window && Notification.permission === "default") {
       void Notification.requestPermission();
     }
   };
+
   const deleteItem = (id: string) => {
     setItems((current) => current.filter((item) => item.id !== id));
     setEditor(null);
-    setMessage("Entry deleted");
+    setMessage(t("calendar.entryDeleted"));
   };
 
   return (
@@ -495,7 +521,7 @@ export function CalendarPage() {
 
         <div className="mt-8">
           <h1 className="text-[34px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
-            Journey
+            {t("calendar.title")}
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
             {dueText}
@@ -505,13 +531,13 @@ export function CalendarPage() {
         <div className="mt-6 grid gap-5 md:grid-cols-[1.15fr_0.85fr] md:items-start">
           <div className="min-w-0 space-y-5">
             <section
-              aria-label="Monthly calendar"
+              aria-label={t("calendar.title")}
               data-dashboard-card
               className="home-glass rounded-[28px] p-5 sm:p-6"
             >
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-[20px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                  {monthTitle(visibleMonth)}
+                  {monthTitle(visibleMonth, isAmharic)}
                 </h2>
                 <div className="flex gap-2">
                   <button
@@ -533,7 +559,7 @@ export function CalendarPage() {
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-7 gap-1.5" aria-hidden="true">
-                {WEEKDAYS.map((day, i) => (
+                {weekdays.map((day, i) => (
                   <span
                     key={i}
                     className="text-center text-[12px] text-[#9b8a6f] dark:text-[#9c8b72]"
@@ -554,8 +580,8 @@ export function CalendarPage() {
                     <button
                       key={key}
                       type="button"
-                      aria-label={`${dayTitle(date)}${isDue ? ", due date" : ""}${
-                        count ? `, ${count} ${count === 1 ? "entry" : "entries"}` : ""
+                      aria-label={`${dayTitle(date, isAmharic)}${isDue ? `, ${t("calendar.dueDate")}` : ""}${
+                        count ? `, ${count}` : ""
                       }`}
                       aria-pressed={isSelected}
                       aria-controls="selected-day-agenda"
@@ -593,36 +619,35 @@ export function CalendarPage() {
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[#e8d9bd] pt-4 text-[12px] text-[#6f6149] dark:border-[#3d3123] dark:text-[#b9a88e]">
                 <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-[#b98a3e] dark:bg-[#e5be79]" /> Task or
-                  event
+                  <span className="h-2 w-2 rounded-full bg-[#b98a3e] dark:bg-[#e5be79]" /> {t("calendar.taskOrEvent")}
                 </span>
                 <span className="flex items-center gap-2">
-                  <Heart size={13} className="text-[#b98a3e] dark:text-[#e5be79]" /> Due date
+                  <Heart size={13} className="text-[#b98a3e] dark:text-[#e5be79]" /> {t("calendar.dueDate")}
                 </span>
               </div>
             </section>
 
-            <section id="selected-day-agenda" aria-label="Selected day agenda" className="px-1 pt-1">
+            <section id="selected-day-agenda" aria-label={t("calendar.yourDayAtGlance")} className="px-1 pt-1">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0" aria-live="polite" aria-atomic="true">
                   <h2
                     id="selected-day-title"
                     className="text-[20px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
                   >
-                    {dayTitle(selected)}
+                    {dayTitle(selected, isAmharic)}
                   </h2>
                   <p className="mt-1 text-[12px] text-[#6f6149] dark:text-[#b9a88e]">
                     {selectedItems.length === 0
-                      ? "Your day, at a glance"
-                      : `${selectedItems.length} ${
-                          selectedItems.length === 1 ? "task or event" : "tasks and events"
-                        }`}
+                      ? t("calendar.yourDayAtGlance")
+                      : selectedItems.length === 1
+                        ? t("calendar.taskCountSingle")
+                        : t("calendar.tasksCount", { count: selectedItems.length })}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setEditor({ key: `new-${Date.now()}`, item: null })}
-                  aria-label="Add task or event"
+                  aria-label={t("calendar.addEvent")}
                   aria-describedby="selected-day-title"
                   aria-haspopup="dialog"
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#c9a35d]/35 bg-[#fbe7b8]/55 text-[#6f5a35] backdrop-blur-md transition-colors hover:bg-[#fbe7b8]/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] motion-reduce:transition-none dark:border-[#e5be79]/35 dark:bg-[#e5be79]/16 dark:text-[#e5be79] dark:hover:bg-[#e5be79]/26 dark:focus-visible:outline-[#e5be79]"
@@ -636,14 +661,14 @@ export function CalendarPage() {
               >
                 {dateKey(selected) === dueDate && (
                   <p className="mb-2 flex items-center gap-2 py-2 text-[14px] font-medium text-[#8d6a2a] dark:text-[#e5be79]">
-                    <Heart size={16} aria-hidden="true" /> Estimated due date
+                    <Heart size={16} aria-hidden="true" /> {t("calendar.estimatedDueDate")}
                   </p>
                 )}
                 {selectedItems.length > 0 ? (
                   <AgendaItems items={selectedItems} onEdit={editItem} />
                 ) : (
                   <p className="py-4 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    Nothing planned for this day. Tap + to add a task or event.
+                    {t("calendar.nothingPlannedDay")}
                   </p>
                 )}
               </div>
@@ -652,24 +677,24 @@ export function CalendarPage() {
 
           <div className="min-w-0 space-y-5">
             <section
-              aria-label="Due date"
+              aria-label={t("calendar.dueDate")}
               data-dashboard-card
               className="home-glass-gold rounded-[26px] p-5"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-medium uppercase tracking-[0.17em] text-[#8d6a2a] dark:text-[#e5be79]">
-                    A day to look forward to
+                    {t("calendar.lookForward")}
                   </p>
                   <h2 className="mt-2 text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {due.toLocaleDateString("en-US", {
+                    {due.toLocaleDateString(isAmharic ? "am-ET" : "en-US", {
                       month: "long",
                       day: "numeric",
                       year: "numeric",
                     })}
                   </h2>
                   <p className="mt-1 text-[13px] text-[#6f6149] dark:text-[#d8c7ab]">
-                    Estimated due date · {dueText}
+                    {t("calendar.estimatedDueDate")} · {dueText}
                   </p>
                 </div>
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/65 text-[#a87a3d] dark:bg-[#e5be79]/18 dark:text-[#e5be79]">
@@ -684,12 +709,12 @@ export function CalendarPage() {
                     if (dueDraft) {
                       setDueDate(dueDraft);
                       setEditingDueDate(false);
-                      setMessage("Due date updated");
+                      setMessage(t("calendar.dueDateUpdated"));
                     }
                   }}
                 >
                   <label className="flex-1 text-[12px] text-[#6f6149] dark:text-[#d8c7ab]">
-                    Estimated due date
+                    {t("calendar.estimatedDueDate")}
                     <input
                       type="date"
                       required
@@ -702,14 +727,14 @@ export function CalendarPage() {
                     type="submit"
                     className="rounded-full bg-[#4a3f30] px-4 py-2.5 text-[13px] font-medium text-white dark:bg-[#e5be79] dark:text-[#231b12]"
                   >
-                    Save
+                    {t("common.save")}
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingDueDate(false)}
                     className="rounded-full px-2 py-2.5 text-[13px] text-[#6f6149] dark:text-[#d8c7ab]"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                 </form>
               ) : (
@@ -721,19 +746,19 @@ export function CalendarPage() {
                   }}
                   className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-[#6f5a35] underline decoration-[#b98a3e]/70 underline-offset-4 dark:text-[#e5be79]"
                 >
-                  <Pencil size={14} /> Update due date
+                  <Pencil size={14} /> {t("calendar.updateDueDate")}
                 </button>
               )}
             </section>
 
-            <section aria-label="Week agenda">
+            <section aria-label={t("calendar.thisWeek")}>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-[22px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    This week
+                    {t("calendar.thisWeek")}
                   </h2>
                   <p className="mt-0.5 text-[13px] text-[#85735a] dark:text-[#9c8b72]">
-                    {weekLabel(selectedWeek)}
+                    {weekLabel(selectedWeek, isAmharic)}
                   </p>
                 </div>
               </div>
@@ -742,10 +767,10 @@ export function CalendarPage() {
                 {plannedDays.length === 0 && (
                   <div className="py-8 text-center">
                     <p className="text-[14px] font-medium text-[#4a3f30] dark:text-[#f0e4ce]">
-                      Nothing planned this week
+                      {t("calendar.nothingPlannedWeek")}
                     </p>
                     <p className="mt-1 text-[12.5px] text-[#85735a] dark:text-[#9c8b72]">
-                      Choose a day above, then tap + to add a task or event.
+                      {t("calendar.chooseDayPrompt")}
                     </p>
                   </div>
                 )}
@@ -765,18 +790,20 @@ export function CalendarPage() {
                               : "text-[#6f6149] dark:text-[#b9a88e]"
                           }`}
                         >
-                          {dayTitle(date)}
-                          {key === dateKey(today) ? " · Today" : ""}
+                          {dayTitle(date, isAmharic)}
+                          {key === dateKey(today) ? ` · ${t("calendar.today")}` : ""}
                         </p>
                         {dayItems.length > 0 && (
                           <span className="text-[11px] text-[#9b8a6f] dark:text-[#9c8b72]">
-                            {dayItems.length} {dayItems.length === 1 ? "entry" : "entries"}
+                            {dayItems.length === 1
+                              ? t("calendar.taskCountSingle")
+                              : t("calendar.tasksCount", { count: dayItems.length })}
                           </span>
                         )}
                       </div>
                       {isDue && (
                         <p className="mt-2 flex items-center gap-2 text-[13px] text-[#8d6a2a] dark:text-[#e5be79]">
-                          <Heart size={15} /> Estimated due date
+                          <Heart size={15} /> {t("calendar.estimatedDueDate")}
                         </p>
                       )}
                       {dayItems.length > 0 ? (

@@ -20,6 +20,7 @@ import {
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { BottomNav, type NavKey } from "../components/BottomNav";
 import { HomeTopBar } from "../components/HomeTopBar";
+import { useTranslation } from "../components/languageStore";
 import { usePathname, useRouter } from "next/navigation";
 import { useProfile } from "../settings/profileStore";
 import { useNotifications } from "../notifications/notificationsData";
@@ -159,6 +160,8 @@ export { BottomNav, HomeTopBar };
 export type { NavKey };
 
 function TopSection({ now }: { now: Date }) {
+  const { t } = useTranslation();
+
   return (
     <section aria-label="Overview" className="space-y-4">
       {/* Greeting */}
@@ -174,18 +177,16 @@ function TopSection({ now }: { now: Date }) {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/60 dark:bg-[#e5be79]/18">
                 <Sparkles size={14} strokeWidth={1.8} />
               </span>
-              Second trimester
+              {t("home.secondTrimester")}
             </span>
             <h2 className="mt-3 text-[26px] font-medium leading-[1.12] tracking-[-0.02em] text-[#3b3226] dark:text-[#f5ede0]">
-              Your Weekly
-              <br />
-              Progress
+              {t("home.progressTitle")}
             </h2>
             <p className="mt-2 text-[13px] text-[#6f5a35] dark:text-[#d8c7ab]">
-              Baby is the size of an ear of corn
+              {t("home.babySize")}
             </p>
           </div>
-          <ProgressRing value={24} max={40} label="weeks" />
+          <ProgressRing value={24} max={40} label={t("home.weeks")} />
         </div>
       </div>
     </section>
@@ -194,15 +195,16 @@ function TopSection({ now }: { now: Date }) {
 
 function StatsSection({ now }: { now: Date }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const day = WEEKDAY_SHORT[now.getDay()];
   const [shareOpen, setShareOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const latestReport = REPORT_ARCHIVE[0];
 
   const journey = [
-    { value: "4", unit: "symptoms" },
-    { value: "3", unit: "food groups" },
-    { value: "2", unit: "supplements taken" },
+    { value: "4", unit: t("home.symptoms") },
+    { value: "3", unit: t("home.foodGroups") },
+    { value: "2", unit: t("home.supplementsTaken") },
   ];
 
   return (
@@ -214,8 +216,8 @@ function StatsSection({ now }: { now: Date }) {
           <article data-dashboard-card className="home-glass-bronze rounded-[26px] p-5 text-[#fffaf0]">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em]">Journey</p>
-                <p className="mt-1 text-[11px] text-[#fff3dc]/80">Today, {day}</p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em]">{t("home.journey")}</p>
+                <p className="mt-1 text-[11px] text-[#fff3dc]/80">{t("home.today")}, {day}</p>
               </div>
               <Route size={17} strokeWidth={1.7} />
             </div>
@@ -248,7 +250,7 @@ function StatsSection({ now }: { now: Date }) {
               />
             </div>
             <p className="mt-2.5 text-[15px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-              Share latest report
+              {t("home.shareReport")}
             </p>
           </button>
         </div>
@@ -273,10 +275,10 @@ function StatsSection({ now }: { now: Date }) {
               />
             </div>
             <p className="mt-3.5 text-[16.5px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-              Start your voice check-in
+              {t("home.startVoice")}
             </p>
             <p className="mt-1 text-[11.5px] tracking-[0.08em] text-[#85735a] dark:text-[#9c8b72]">
-              ABOUT 1 MIN
+              {t("home.aboutOneMin")}
             </p>
           </Link>
 
@@ -299,10 +301,10 @@ function StatsSection({ now }: { now: Date }) {
               />
             </div>
             <p className="mt-2 text-[15px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-              Log by hand
+              {t("home.logByHand")}
             </p>
             <p className="mt-0.5 text-[11px] tracking-[0.08em] text-[#85735a] dark:text-[#9c8b72]">
-              YOUR OWN PACE
+              {t("home.quickFoodSupplements")}
             </p>
           </button>
         </div>
@@ -321,6 +323,12 @@ function StatsSection({ now }: { now: Date }) {
 }
 
 function CalendarSection({ now }: { now: Date }) {
+  const { t, isAmharic } = useTranslation();
+  const dayLetters = useMemo(
+    () => (isAmharic ? ["እ", "ሰ", "ማ", "ረ", "ሐ", "ዓ", "ቅ"] : ["S", "M", "T", "W", "T", "F", "S"]),
+    [isAmharic],
+  );
+
   const [weekStart, setWeekStart] = useState(() => startOfWeek(now));
   const [selected, setSelected] = useState(() => {
     const d = new Date(now);
@@ -347,8 +355,22 @@ function CalendarSection({ now }: { now: Date }) {
     setSelected(sel);
   };
 
-  const heading = days[3].toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  const agenda = agendaFor(selected);
+  const heading = days[3].toLocaleDateString(isAmharic ? "am-ET" : "en-US", { month: "long", year: "numeric" });
+  
+  const agenda = useMemo(() => {
+    switch (selected.getDay()) {
+      case 1:
+        return { title: t("home.agendaMorning"), time: "08:00" };
+      case 3:
+        return { title: t("home.agendaMidwife"), time: "10:30" };
+      case 5:
+        return { title: t("home.agendaGlucose"), time: "09:15" };
+      case 6:
+        return { title: t("home.agendaYoga"), time: "18:00" };
+      default:
+        return null;
+    }
+  }, [selected, t]);
 
   return (
     <section
@@ -405,7 +427,7 @@ function CalendarSection({ now }: { now: Date }) {
                     : "text-[#9b8a6f] dark:text-[#9c8b72]"
                 }`}
               >
-                {DAY_LETTERS[i]}
+                {dayLetters[i]}
               </span>
               <span
                 className={`text-[16px] font-semibold ${
@@ -433,7 +455,7 @@ function CalendarSection({ now }: { now: Date }) {
           </p>
         ) : (
           <p className="text-[13.5px] text-[#85735a] dark:text-[#9c8b72]">
-            No appointments. A good day to rest.
+            {t("home.noAppointments")}
           </p>
         )}
       </div>

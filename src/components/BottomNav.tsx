@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, FileText, Home, ListChecks, Mic } from "lucide-react";
+import { useTranslation } from "./languageStore";
 
 export type NavKey = "home" | "calendar" | "report" | "checkin";
 
@@ -15,6 +16,7 @@ const NAV_DESTINATIONS: Record<NavKey, string> = {
 };
 
 export function BottomNav({ current }: { current?: NavKey }) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const inferredCurrent: NavKey =
     current ??
@@ -116,21 +118,21 @@ export function BottomNav({ current }: { current?: NavKey }) {
           overCards ? "home-nav-overlap" : "home-nav-clear"
         }`}
       >
-        {navItem("home", "Home", <Home size={19} strokeWidth={1.9} />)}
-        {navItem("calendar", "Calendar", <CalendarDays size={19} strokeWidth={1.8} />)}
+        {navItem("home", t("nav.home"), <Home size={19} strokeWidth={1.9} />)}
+        {navItem("calendar", t("nav.calendar"), <CalendarDays size={19} strokeWidth={1.8} />)}
 
         {/* Voice assistant */}
         <Link
           href="/voice"
           prefetch={true}
-          aria-label="Start voice check-in"
+          aria-label={t("voice.title")}
           className="relative mx-1 flex h-16 w-16 items-center justify-center rounded-full bg-[#3b3226] text-[#fbe7b8] shadow-[0_10px_24px_-10px_rgba(60,45,25,0.7)] transition active:scale-95 dark:bg-[#e5be79] dark:text-[#231b12] dark:shadow-[0_10px_26px_-8px_rgba(229,190,121,0.45)]"
         >
           <Mic size={24} strokeWidth={1.9} className="relative" />
         </Link>
 
-        {navItem("report", "ANC report", <FileText size={19} strokeWidth={1.8} />)}
-        {navItem("checkin", "Check-in logs", <ListChecks size={19} strokeWidth={1.8} />)}
+        {navItem("report", t("nav.reports"), <FileText size={19} strokeWidth={1.8} />)}
+        {navItem("checkin", t("nav.logs"), <ListChecks size={19} strokeWidth={1.8} />)}
       </div>
     </nav>
   );

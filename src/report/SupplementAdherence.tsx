@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { SupplementReport } from "./reportData";
 import { useCountUp } from "./useInViewOnce";
+import { useTranslation } from "../components/languageStore";
 import "./supplement-adherence.css";
 
 function AnimatedSupplementPercent({
@@ -31,6 +32,7 @@ function AnimatedSupplementPercent({
 }
 
 export function SupplementAdherence({ supplements }: { supplements: SupplementReport[] }) {
+  const { t, isAmharic } = useTranslation();
   const listRef = useRef<HTMLUListElement>(null);
   const [revealed, setRevealed] = useState(false);
   const id = useId();
@@ -63,6 +65,7 @@ export function SupplementAdherence({ supplements }: { supplements: SupplementRe
         {supplements.map((supplement, index) => {
           const headingId = `${id}-${supplement.id}`;
           const percent = Math.min(100, Math.max(0, supplement.percent ?? 0));
+          const localizedName = t(`reports.supplementsMap.${supplement.name}`) || supplement.name;
 
           return (
             <li key={supplement.id}>
@@ -75,7 +78,7 @@ export function SupplementAdherence({ supplements }: { supplements: SupplementRe
                 <div
                   className="supplement-card__meter"
                   role={supplement.percent === null ? undefined : "meter"}
-                  aria-label={`${supplement.name} days taken`}
+                  aria-label={`${localizedName} days taken`}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={supplement.percent === null ? undefined : percent}
@@ -90,11 +93,15 @@ export function SupplementAdherence({ supplements }: { supplements: SupplementRe
 
                 <div className="supplement-card__content">
                   <div className="min-w-0">
-                    <h3 id={headingId} className="supplement-card__name">{supplement.name}</h3>
+                    <h3 id={headingId} className="supplement-card__name">{localizedName}</h3>
                     <p className="supplement-card__missed">
                       {supplement.loggedDays > 0
-                        ? `${supplement.missedDays} ${supplement.missedDays === 1 ? "day" : "days"} missed`
-                        : "No entries yet"}
+                        ? isAmharic
+                          ? `${supplement.missedDays} ${t("reports.daysMissed")}`
+                          : `${supplement.missedDays} ${supplement.missedDays === 1 ? "day" : "days"} missed`
+                        : isAmharic
+                          ? "እስካሁን ምንም ምዝገባ የለም"
+                          : "No entries yet"}
                     </p>
                   </div>
                   <p className="supplement-card__percent" aria-hidden="true">

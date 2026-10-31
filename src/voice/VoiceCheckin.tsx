@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { CheckinReportSheet, severityLabel, type CheckinEntry } from "../components/CheckinReportSheet";
 import Link from "next/link";
+import { useTranslation } from "../components/languageStore";
 import { useRouter } from "next/navigation";
 
 /* ------------------------------------------------------------------ */
@@ -25,16 +26,22 @@ import { useRouter } from "next/navigation";
 
 const UTTERANCES = [
   {
-    prompt: "How are you feeling today?",
-    answer: "A little tired, with a mild headache after lunch.",
+    prompt_en: "How are you feeling today?",
+    prompt_am: "ዛሬ እንዴት ነዎት?",
+    answer_en: "A little tired, with a mild headache after lunch.",
+    answer_am: "ትንሽ ድካም ተሰምቶኛል፣ ከምሳ በኋላም ትንሽ ራስ ምታት ነበረኝ።",
   },
   {
-    prompt: "Any symptoms since yesterday?",
-    answer: "Some nausea in the mornings, but it has eased off.",
+    prompt_en: "Any symptoms since yesterday?",
+    prompt_am: "ከትላንት ወዲህ የተሰማዎት የጤና ለውጥ አለ?",
+    answer_en: "Some nausea in the mornings, but it has eased off.",
+    answer_am: "ጠዋት ላይ ትንሽ ማቅለሽለሽ ነበረኝ ግን አሁን ለቆኛል።",
   },
   {
-    prompt: "What did you eat today?",
-    answer: "Oatmeal for breakfast, a chicken salad, and a glass of milk.",
+    prompt_en: "What did you eat today?",
+    prompt_am: "ዛሬ ምን ተመገቡ?",
+    answer_en: "Oatmeal for breakfast, a chicken salad, and a glass of milk.",
+    answer_am: "ጠዋት አጃ ከወተት ጋር፣ ለምሳ የዶሮ ሰላጣ እና አንድ ብርጭቆ ወተት።",
   },
 ];
 
@@ -148,7 +155,7 @@ function AnimatedWords({
 /* Processing state: question stays, shimmer lines + bouncing dots     */
 /* ------------------------------------------------------------------ */
 
-function ProcessingState() {
+function ProcessingState({ isAmharic }: { isAmharic?: boolean }) {
   return (
     <div
       className="mt-6 flex w-full flex-col items-center"
@@ -165,7 +172,7 @@ function ProcessingState() {
           <span className="proc-dot" style={{ animationDelay: "150ms" }} />
           <span className="proc-dot" style={{ animationDelay: "300ms" }} />
         </span>
-        Understanding your words…
+        {isAmharic ? "ቃላትዎን በማስተዋል ላይ…" : "Understanding your words…"}
       </div>
     </div>
   );
@@ -179,10 +186,12 @@ function SeveritySlider({
   value,
   onChange,
   disabled,
+  isAmharic = false,
 }: {
   value: number;
   onChange: (v: number) => void;
   disabled?: boolean;
+  isAmharic?: boolean;
 }) {
   return (
     <div className="mt-5 w-full">
@@ -193,14 +202,14 @@ function SeveritySlider({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))}
-        aria-label={`Severity, currently ${severityLabel(value)}`}
+        aria-label={`Severity, currently ${severityLabel(value, isAmharic)}`}
         className="severity-slider"
         style={{ ["--fill" as string]: `${value}%` } as React.CSSProperties}
       />
       <div className="mt-1.5 flex justify-between text-[11px] text-[#9b8a6f] dark:text-[#9c8b72]">
-        <span>Mild</span>
-        <span>Moderate</span>
-        <span>Severe</span>
+        <span>{isAmharic ? "ቀላል" : "Mild"}</span>
+        <span>{isAmharic ? "መካከለኛ" : "Moderate"}</span>
+        <span>{isAmharic ? "ከፍተኛ" : "Severe"}</span>
       </div>
     </div>
   );
@@ -218,6 +227,7 @@ function ReviewCard({
   onSeverityChange,
   locked,
   saved,
+  isAmharic,
 }: {
   draft: string;
   editing: boolean;
@@ -226,13 +236,14 @@ function ReviewCard({
   onSeverityChange: (v: number) => void;
   locked: boolean;
   saved: boolean;
+  isAmharic?: boolean;
 }) {
   return (
     <div className="review-in mt-6 w-full text-center">
       {editing ? (
         <div>
           <label htmlFor="answer-edit" className="sr-only">
-            Edit your transcribed answer
+            {isAmharic ? "የተፃፈውን መልስዎን ያስተካክሉ" : "Edit your transcribed answer"}
           </label>
           <textarea
             id="answer-edit"
@@ -243,7 +254,7 @@ function ReviewCard({
             className="w-full resize-none rounded-2xl border border-[#c9a35d]/60 bg-white px-4 py-3 text-left text-[16px] leading-relaxed text-[#3b3226] outline-none focus:border-[#8d6a2a] dark:border-[#e5be79]/50 dark:bg-[#1c1611] dark:text-[#f5ede0] dark:focus:border-[#e5be79]"
           />
           <p className="mt-2 text-[13px] text-[#85735a] dark:text-[#9c8b72]">
-            Fix any words, then hit confirm.
+            {isAmharic ? "ቃላትን ካስተካከሉ በኋላ አረጋግጥ የሚለውን ይጫኑ።" : "Fix any words, then hit confirm."}
           </p>
         </div>
       ) : (
@@ -260,20 +271,22 @@ function ReviewCard({
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#fbe7b8] dark:bg-[#e5be79]/22">
                   <Check size={13} strokeWidth={2.4} />
                 </span>
-                Saved
+                {isAmharic ? "ተቀምጧል" : "Saved"}
               </span>
             ) : (
-              <p className="text-[15px] text-[#6f6149] dark:text-[#c7b69c]">Is that correct?</p>
+              <p className="text-[15px] text-[#6f6149] dark:text-[#c7b69c]">
+                {isAmharic ? "ትክክል ነው?" : "Is that correct?"}
+              </p>
             )}
           </div>
         </div>
       )}
 
-      <SeveritySlider value={severity} onChange={onSeverityChange} disabled={locked} />
+      <SeveritySlider value={severity} onChange={onSeverityChange} disabled={locked} isAmharic={isAmharic} />
 
       {!locked && !editing && (
         <p className="mt-4 text-[13px] text-[#85735a] dark:text-[#9c8b72]">
-          Tap edit or re-record to change your answer.
+          {isAmharic ? "መልስዎን ለመቀየር ማስተካከል ወይም በድጋሚ መቅዳትን ይጫኑ።" : "Tap edit or re-record to change your answer."}
         </p>
       )}
     </div>
@@ -321,6 +334,7 @@ const STATUS: Record<Phase | "done", string> = {
 
 export function VoiceCheckin() {
   const router = useRouter();
+  const { t, isAmharic } = useTranslation();
   const [questionIndex, setQuestionIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("asking");
   const [draft, setDraft] = useState("");
@@ -337,7 +351,13 @@ export function VoiceCheckin() {
 
   const completed = questionIndex >= UTTERANCES.length;
   const listening = phase === "listening";
-  const question = !completed ? UTTERANCES[questionIndex] : null;
+  const currentUtterance = !completed ? UTTERANCES[questionIndex] : null;
+  const question = currentUtterance
+    ? {
+        prompt: isAmharic ? currentUtterance.prompt_am : currentUtterance.prompt_en,
+        answer: isAmharic ? currentUtterance.answer_am : currentUtterance.answer_en,
+      }
+    : null;
 
   // A new question means the AI starts speaking it again.
   useEffect(() => {
@@ -386,7 +406,7 @@ export function VoiceCheckin() {
     if (phase !== "listening" || completed) return;
     setPhase("processing");
     later(() => {
-      setDraft(UTTERANCES[questionIndex].answer);
+      setDraft(question ? question.answer : "");
       setSeverity(50);
       setPhase("review");
     }, 2100);
@@ -487,9 +507,16 @@ export function VoiceCheckin() {
           </Link>
 
           <div className="text-center">
-            <p className="text-[16px] font-medium tracking-tight">Voice check-in</p>
+            <p className="text-[16px] font-medium tracking-tight">{t("voice.title")}</p>
             <p className="mt-0.5 text-[13px] text-[#85735a] dark:text-[#9c8b72]" aria-live="polite">
-              {completed ? STATUS.done : STATUS[phase]}
+              {completed ? (isAmharic ? "ተጠናቋል" : STATUS.done) : (isAmharic ? {
+                asking: "ለመጀመር ይጫኑ",
+                listening: "እያዳመጥኩ ነው…",
+                processing: "በማዘጋጀት ላይ…",
+                review: "መልስዎን ያረጋግጡ",
+                editing: "በማስተካከል ላይ…",
+                confirming: "በማስቀመጥ ላይ…",
+              }[phase] : STATUS[phase])}
             </p>
           </div>
 
@@ -541,7 +568,7 @@ export function VoiceCheckin() {
                     id="danger-headline"
                     className="text-[25px] font-bold leading-[1.2] tracking-[-0.02em] text-[#63281d] dark:text-[#fde8e1]"
                   >
-                    A danger sign was detected
+                    {isAmharic ? "የአደጋ ምልክት ተገኝቷል" : "A danger sign was detected"}
                   </h2>
                   <div className="mt-7 flex justify-center" aria-hidden="true">
                     <div className="relative flex h-32 w-32 items-center justify-center">
@@ -555,14 +582,17 @@ export function VoiceCheckin() {
                     </div>
                   </div>
                   <p className="mx-auto mt-6 max-w-[40ch] text-[17px] font-semibold leading-snug text-[#63281d] dark:text-[#fde8e1]">
-                    {SIMULATED_DANGER_SIGN.name}
+                    {isAmharic ? "ጽኑ ራስ ምታት ከእይታ ብዥታ ጋር" : SIMULATED_DANGER_SIGN.name}
                   </p>
                   <p className="mx-auto mt-2 max-w-[40ch] text-[15px] leading-relaxed text-[#7d2b1c] dark:text-[#f3bdb0]">
-                    {SIMULATED_DANGER_SIGN.detail}
+                    {isAmharic
+                      ? "ከ6 ሰዓታት በላይ የቆየ በእረፍት ያልቀለለ ራስ ምታት እና የእይታ ብዥታ ገልፀዋል።"
+                      : SIMULATED_DANGER_SIGN.detail}
                   </p>
                   <p className="mx-auto mt-5 max-w-[40ch] text-[15px] font-semibold leading-relaxed text-[#63281d] dark:text-[#fde8e1]">
-                    Please contact your doctor or midwife now — don&apos;t wait for your next
-                    appointment.
+                    {isAmharic
+                      ? "እባክዎን አሁንኑ ዶክተርዎን ወይም አዋላጅዎን ያነጋግሩ — እስከ ቀጣዩ ቀጠሮ አይጠብቁ።"
+                      : "Please contact your doctor or midwife now — don't wait for your next appointment."}
                   </p>
                   <ul className="mx-auto mt-4 max-w-[42ch] space-y-1.5 text-left text-[14px] leading-relaxed text-[#8d3d2b] dark:text-[#eab0a2]">
                     <li className="flex gap-2.5">
@@ -570,34 +600,40 @@ export function VoiceCheckin() {
                         aria-hidden="true"
                         className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#c65a45] dark:bg-[#e87962]"
                       />
-                      If you feel very unwell, have trouble seeing, or are in pain, seek urgent care.
+                      {isAmharic
+                        ? "በጣም ከታመሙ፣ የማየት ችግር ካጋጠመዎ ወይም ህመም ከተሰማዎት አፋጣኝ ህክምና ያግኙ።"
+                        : "If you feel very unwell, have trouble seeing, or are in pain, seek urgent care."}
                     </li>
                     <li className="flex gap-2.5">
                       <span
                         aria-hidden="true"
                         className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#c65a45] dark:bg-[#e87962]"
                       />
-                      Ask someone to stay with you until you have spoken to a clinician.
+                      {isAmharic
+                        ? "ከጤና ባለሙያ ጋር እስኪነጋገሩ ድረስ አንድ ሰው ከእርስዎ ጋር እንዲቆይ ያድርጉ።"
+                        : "Ask someone to stay with you until you have spoken to a clinician."}
                     </li>
                     <li className="flex gap-2.5">
                       <span
                         aria-hidden="true"
                         className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#c65a45] dark:bg-[#e87962]"
                       />
-                      Your answers are saved and ready to share with your care team.
+                      {isAmharic
+                        ? "መልሶችዎ ተቀምጠዋል፣ ለህክምና ቡድንዎ ለማጋራት ዝግጁ ናቸው።"
+                        : "Your answers are saved and ready to share with your care team."}
                     </li>
                   </ul>
                 </div>
               ) : (
                 <div className="rise w-full text-center" role="status">
                   <p className="text-[18px] leading-snug text-[#85735a] dark:text-[#b9a88e]">
-                    All done for today.
+                    {isAmharic ? "የዛሬው ምዝገባ ተጠናቋል።" : "All done for today."}
                   </p>
                   <p className="mt-3 text-[25px] font-bold leading-[1.2] tracking-[-0.02em]">
-                    You&apos;ve reached the end of today&apos;s questions.
+                    {isAmharic ? "የዛሬዎቹን ጥያቄዎች ጨርሰዋል።" : "You've reached the end of today's questions."}
                   </p>
                   <p className="mt-3 text-[15px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
-                    Return home whenever you&apos;re ready.
+                    {isAmharic ? "ዝግጁ ሲሆኑ ወደ መነሻ ገጽ መመለስ ይችላሉ።" : "Return home whenever you're ready."}
                   </p>
                 </div>
               )
@@ -612,7 +648,7 @@ export function VoiceCheckin() {
 
                   {phase === "asking" && (
                     <p className="rise mt-4 text-center text-[14px] text-[#85735a] dark:text-[#9c8b72]">
-                      Tap record and speak your answer.
+                      {isAmharic ? "የመቅጃ ቁልፉን ተጭነው መልስዎን ይናገሩ።" : "Tap record and speak your answer."}
                     </p>
                   )}
                   {phase === "listening" && (
@@ -621,11 +657,11 @@ export function VoiceCheckin() {
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#d9ab5e] opacity-60" />
                         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#c9a35d]" />
                       </span>
-                      Listening… speak now.
+                      {isAmharic ? "እያዳመጥኩ ነው… አሁን ይናገሩ።" : "Listening… speak now."}
                     </p>
                   )}
 
-                  {phase === "processing" && <ProcessingState />}
+                  {phase === "processing" && <ProcessingState isAmharic={isAmharic} />}
 
                   {(phase === "review" || phase === "editing" || phase === "confirming") && (
                     <ReviewCard
@@ -636,6 +672,7 @@ export function VoiceCheckin() {
                       onSeverityChange={setSeverity}
                       locked={phase === "confirming"}
                       saved={phase === "confirming"}
+                      isAmharic={isAmharic}
                     />
                   )}
                 </div>
@@ -661,14 +698,14 @@ export function VoiceCheckin() {
                   className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#8f3021] px-6 py-3.5 text-[15px] font-semibold text-[#fff7f2] transition-colors hover:bg-[#7a291c] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8f3021] dark:bg-[#c65a45] dark:hover:bg-[#d46853]"
                 >
                   <Phone size={18} strokeWidth={2} aria-hidden="true" />
-                  Call your doctor
+                  {isAmharic ? "ለዶክተርዎ ይደውሉ" : "Call your doctor"}
                 </a>
                 <a
                   href="tel:911"
                   className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-[#c65a45]/70 bg-[#f6e0d8]/70 px-6 py-3.5 text-[14.5px] font-semibold text-[#7d2b1c] transition-colors hover:bg-[#f2d3c8] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8f3021] dark:border-[#e07a64]/60 dark:bg-[#421b15]/80 dark:text-[#fde8e1] dark:hover:bg-[#54221a]"
                 >
                   <Siren size={18} strokeWidth={2} aria-hidden="true" />
-                  Call 911 — emergency
+                  {isAmharic ? "ለአስቸኳይ ጊዜ (911) ይደውሉ" : "Call 911 — emergency"}
                 </a>
                 <div className="mt-1 flex items-center justify-center gap-4 text-[13px]">
                   <button
@@ -676,7 +713,7 @@ export function VoiceCheckin() {
                     onClick={() => setShowReport(true)}
                     className="rounded-full px-3 py-2 font-medium text-[#7d2b1c] underline decoration-[#c65a45]/60 underline-offset-4 transition-colors hover:text-[#4a2318] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8f3021] dark:text-[#f5bfb3] dark:hover:text-[#fde8e1]"
                   >
-                    View report
+                    {isAmharic ? "ሪፖርት ይመልከቱ" : "View report"}
                   </button>
                   <span aria-hidden="true" className="text-[#c65a45]/50">
                     /
@@ -686,7 +723,7 @@ export function VoiceCheckin() {
                     prefetch={true}
                     className="rounded-full px-3 py-2 font-medium text-[#6f6149] underline decoration-[#b98a3e]/50 underline-offset-4 transition-colors hover:text-[#3b3226] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#c7b69c] dark:hover:text-[#f5ede0]"
                   >
-                    Back to home
+                    {isAmharic ? "ወደ መነሻ ተመለስ" : "Back to home"}
                   </Link>
                 </div>
               </div>
@@ -698,7 +735,7 @@ export function VoiceCheckin() {
                   className="mx-auto flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 text-[12.5px] font-medium text-[#8f6a3a] underline decoration-[#c9a35d]/60 underline-offset-4 transition-colors hover:text-[#7d2b1c] hover:decoration-[#c65a45] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#dfb870] dark:hover:text-[#f08b75]"
                 >
                   <AlertTriangle size={14} strokeWidth={2} aria-hidden="true" />
-                  Demo: preview a danger sign alert
+                  {isAmharic ? "ሙከራ፡ የአደጋ ምልክት ማንቂያ ይመልከቱ" : "Demo: preview a danger sign alert"}
                 </button>
                 <button
                   type="button"
@@ -706,14 +743,14 @@ export function VoiceCheckin() {
                   className="home-card-solid flex w-full items-center justify-center gap-2 rounded-full px-6 py-4 text-[15px] font-medium text-[#4a3f30] dark:text-[#f5ede0] transition hover:border-[#c9a35d]/80 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
                 >
                   <FileText size={18} strokeWidth={1.8} />
-                  View report
+                  {isAmharic ? "ሪፖርት ይመልከቱ" : "View report"}
                 </button>
                 <Link
                   href="/home"
                   prefetch={true}
                   className="flex w-full items-center justify-center rounded-full bg-[#3b3226] px-6 py-4 text-[15px] font-medium text-[#fbe7b8] transition hover:bg-[#4a3f30] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
                 >
-                  Back to home
+                  {isAmharic ? "ወደ መነሻ ተመለስ" : "Back to home"}
                 </Link>
               </div>
             )
@@ -722,7 +759,7 @@ export function VoiceCheckin() {
               <div className="flex flex-col items-center gap-2">
                 <button
                   type="button"
-                  aria-label={phase === "editing" ? "Done editing" : "Edit answer"}
+                  aria-label={phase === "editing" ? (isAmharic ? "ማስተካከል ጨርስ" : "Done editing") : (isAmharic ? "መልስ አስተካክል" : "Edit answer")}
                   aria-pressed={phase === "editing"}
                   onClick={toggleEdit}
                   disabled={editDisabled}
@@ -735,7 +772,7 @@ export function VoiceCheckin() {
                   <PenLine size={18} strokeWidth={1.8} />
                 </button>
                 <span className="text-[12px] font-medium tracking-wide text-[#6f6149] dark:text-[#b9a88e]">
-                  edit
+                  {isAmharic ? "አስተካክል" : "edit"}
                 </span>
               </div>
 
@@ -744,12 +781,12 @@ export function VoiceCheckin() {
                   type="button"
                   aria-label={
                     phase === "listening"
-                      ? "Stop recording"
+                      ? (isAmharic ? "መቅዳት አቁም" : "Stop recording")
                       : phase === "review"
-                        ? "Record again"
+                        ? (isAmharic ? "እንደገና ቅዳ" : "Record again")
                         : phase === "processing"
-                          ? "Processing answer"
-                          : "Start recording"
+                          ? (isAmharic ? "በማዘጋጀት ላይ" : "Processing answer")
+                          : (isAmharic ? "መቅዳት ጀምር" : "Start recording")
                   }
                   aria-pressed={listening}
                   onClick={() => {
@@ -770,20 +807,16 @@ export function VoiceCheckin() {
                   )}
                 </button>
                 <span className="text-[12px] font-medium tracking-wide text-[#6f6149] dark:text-[#b9a88e]">
-                  {phase === "listening"
-                    ? "pause"
-                    : phase === "processing"
-                      ? "working"
-                      : phase === "review"
-                        ? "redo"
-                        : "record"}
+                  {isAmharic
+                    ? (phase === "listening" ? "አቁም" : phase === "processing" ? "በማዘጋጀት ላይ" : phase === "review" ? "እንደገና" : "ቅዳ")
+                    : (phase === "listening" ? "pause" : phase === "processing" ? "working" : phase === "review" ? "redo" : "record")}
                 </span>
               </div>
 
               <div className="flex flex-col items-center gap-2">
                 <button
                   type="button"
-                  aria-label={rightIsConfirm ? "Confirm answer" : "Skip question"}
+                  aria-label={rightIsConfirm ? (isAmharic ? "መልስ አረጋግጥ" : "Confirm answer") : (isAmharic ? "ጥያቄ ዝለል" : "Skip question")}
                   onClick={rightIsConfirm ? confirmAnswer : skipQuestion}
                   disabled={phase === "confirming" || leaving}
                   className={`flex h-14 w-14 items-center justify-center rounded-full text-[#4a3f30] transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
@@ -799,7 +832,7 @@ export function VoiceCheckin() {
                   )}
                 </button>
                 <span className="text-[12px] font-medium tracking-wide text-[#6f6149] dark:text-[#b9a88e]">
-                  {rightIsConfirm ? "confirm" : "skip"}
+                  {isAmharic ? (rightIsConfirm ? "አረጋግጥ" : "ዝለል") : (rightIsConfirm ? "confirm" : "skip")}
                 </span>
               </div>
             </>
@@ -810,8 +843,8 @@ export function VoiceCheckin() {
       <CheckinReportSheet
         open={showReport}
         onClose={() => setShowReport(false)}
-        eyebrow="Today"
-        title="Check-in report"
+        eyebrow={t("home.today")}
+        title={isAmharic ? "የምዝገባ ሪፖርት" : "Check-in report"}
         entries={responses}
         dangerSigns={dangerSimulated ? [SIMULATED_DANGER_SIGN] : []}
       />

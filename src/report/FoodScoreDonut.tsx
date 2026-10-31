@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import { Apple, Beef, Carrot, ChevronDown, Milk, Wheat } from "lucide-react";
 import { FOOD_GROUPS, FOOD_ITEM_COUNTS } from "./reportData";
 import { useCountUp, useInViewOnce } from "./useInViewOnce";
+import { useTranslation } from "../components/languageStore";
 
 const ICONS = [Wheat, Beef, Milk, Apple, Carrot] as const;
 
@@ -45,6 +46,7 @@ function AnimatedFoodCount({
  * and an expandable list of foods logged in each group.
  */
 export function FoodScoreDonut({ counts, score }: FoodTotals) {
+  const { t, isAmharic } = useTranslation();
   const uid = useId().replace(/:/g, "");
   const filterId = `food-lift-${uid}`;
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -185,7 +187,7 @@ export function FoodScoreDonut({ counts, score }: FoodTotals) {
               letterSpacing: "1.6px",
             }}
           >
-            FOOD BALANCE
+            {t("reports.foodBalance")}
           </text>
         </svg>
       </div>
@@ -196,6 +198,7 @@ export function FoodScoreDonut({ counts, score }: FoodTotals) {
             const open = openGroup === seg.name;
             const panelId = `food-items-${seg.name.toLowerCase()}`;
             const maxTimes = Math.max(...seg.foods.map((f) => f.times), 1);
+            const localizedGroupName = t(`reports.foodGroupsMap.${seg.name}`) || seg.name;
 
             return (
               <li key={seg.name} data-food-group={seg.name}>
@@ -218,10 +221,10 @@ export function FoodScoreDonut({ counts, score }: FoodTotals) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13px] text-[#4a3f30] dark:text-[#f0e4ce]">
-                      {seg.name}
+                      {localizedGroupName}
                     </span>
                     <span className="block text-[11px] text-[#9b8a6f] dark:text-[#9c8b72]">
-                      {Math.round((seg.count / total) * 100)}% of days
+                      {Math.round((seg.count / total) * 100)}{isAmharic ? "% ቀናት" : "% of days"}
                     </span>
                   </span>
                   <span className="text-[15px] font-semibold tabular-nums text-[#3b3226] dark:text-[#f5ede0]">
@@ -243,30 +246,33 @@ export function FoodScoreDonut({ counts, score }: FoodTotals) {
                 <div
                   id={panelId}
                   role="region"
-                  aria-label={`Foods in ${seg.name}`}
+                  aria-label={`Foods in ${localizedGroupName}`}
                   hidden={!open}
                   className={open ? "food-expand px-2 pb-2 pt-1" : "hidden"}
                 >
                   <ul className="space-y-2 rounded-[14px] bg-[#fffaf1]/80 px-3 py-2.5 dark:bg-[#18130e]/85">
-                    {seg.foods.map((food) => (
-                      <li key={food.name} className="flex items-center gap-2.5">
-                        <span className="w-[108px] shrink-0 text-[12.5px] text-[#4a3f30] dark:text-[#dfcfb6]">
-                          {food.name}
-                        </span>
-                        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#ecdfc5] dark:bg-[#31271c]">
-                          <span
-                            className="block h-full rounded-full"
-                            style={{
-                              width: `${(food.times / maxTimes) * 100}%`,
-                              background: seg.color,
-                            }}
-                          />
-                        </span>
-                        <span className="w-[52px] shrink-0 text-right text-[11.5px] tabular-nums text-[#6f6149] dark:text-[#b9a88e]">
-                          {food.times}×
-                        </span>
-                      </li>
-                    ))}
+                    {seg.foods.map((food) => {
+                      const localizedFoodName = t(`reports.foodItemsMap.${food.name}`) || food.name;
+                      return (
+                        <li key={food.name} className="flex items-center gap-2.5">
+                          <span className="w-[108px] shrink-0 text-[12.5px] text-[#4a3f30] dark:text-[#dfcfb6]">
+                            {localizedFoodName}
+                          </span>
+                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#ecdfc5] dark:bg-[#31271c]">
+                            <span
+                              className="block h-full rounded-full"
+                              style={{
+                                width: `${(food.times / maxTimes) * 100}%`,
+                                background: seg.color,
+                              }}
+                            />
+                          </span>
+                          <span className="w-[52px] shrink-0 text-right text-[11.5px] tabular-nums text-[#6f6149] dark:text-[#b9a88e]">
+                            {food.times}×
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               </li>
@@ -274,7 +280,7 @@ export function FoodScoreDonut({ counts, score }: FoodTotals) {
           })}
         </ul>
         <p className="mt-3 text-[12.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-          Tap a group to see which foods were logged, and how often.
+          {t("reports.tapGroupNote")}
         </p>
       </div>
     </div>

@@ -1,11 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { CSSProperties } from "react";
 import { BottomNav } from "../components/BottomNav";
 import { HomeTopBar } from "../components/HomeTopBar";
-import { REPORT_ARCHIVE } from "./reportCatalog";
+import { REPORT_ARCHIVE, getLocalizedReport } from "./reportCatalog";
+import { useTranslation } from "../components/languageStore";
 
 export function ReportsList() {
+  const { t, isAmharic } = useTranslation();
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#f3ecdf] text-[#4a3f30] dark:bg-[#15120e] dark:text-[#f0e4ce]">
@@ -20,15 +24,16 @@ export function ReportsList() {
 
         <section className="mt-8">
           <h1 className="text-[34px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
-            ANC reports
+            {t("reports.title")}
           </h1>
           <p className="mt-3 max-w-[38ch] text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-            Monthly check-in summaries prepared for each antenatal appointment.
+            {t("reports.subtitle")}
           </p>
         </section>
 
-        <section aria-label="All ANC reports" className="mt-6 grid gap-3 md:grid-cols-2">
-          {REPORT_ARCHIVE.map((report, index) => {
+        <section aria-label={t("reports.allReports")} className="mt-6 grid gap-3 md:grid-cols-2">
+          {REPORT_ARCHIVE.map((rawReport, index) => {
+            const report = getLocalizedReport(rawReport, isAmharic);
             const hasDanger = Boolean(report.dangerSigns?.length);
             const dangerCount = report.dangerSigns?.length ?? 0;
 
@@ -85,7 +90,7 @@ export function ReportsList() {
                       {report.checkinRate}%
                     </span>
                     <span className="mt-1 block text-[11.5px] text-[#6f6149] dark:text-[#c7b69c]">
-                      check-ins completed
+                      {t("reports.checkinsCompleted")}
                     </span>
                   </span>
                   <span>
@@ -93,7 +98,7 @@ export function ReportsList() {
                       {report.daysMissed}
                     </span>
                     <span className="mt-1 block text-[11.5px] text-[#6f6149] dark:text-[#c7b69c]">
-                      days missed
+                      {t("reports.daysMissed")}
                     </span>
                   </span>
                   {hasDanger && (
@@ -102,7 +107,7 @@ export function ReportsList() {
                         {dangerCount}
                       </span>
                       <span className="mt-1 block text-[11.5px] text-[#9c3a29] dark:text-[#f08b75]">
-                        danger signs
+                        {t("reports.dangerSigns")}
                       </span>
                     </span>
                   )}

@@ -15,6 +15,7 @@ import {
 import { LeafMark } from "../components/LeafMark";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { useProfile } from "../settings/profileStore";
+import { useTranslation } from "../components/languageStore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -52,13 +53,14 @@ function saveAccounts(accounts: Account[]) {
 /* ------------------------------------------------------------------ */
 
 function Brand() {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-2">
       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3b3226] text-[#fbe7b8] dark:bg-[#e5be79] dark:text-[#231b12]">
         <LeafMark className="h-[25px] w-[25px]" />
       </span>
       <span className="text-[18px] font-medium tracking-tight text-[#4a3f30] dark:text-[#f5ede0]">
-        Mama Health
+        {t("common.appName")}
       </span>
     </div>
   );
@@ -145,6 +147,7 @@ function Field({
 }
 
 function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
+  const { t } = useTranslation();
   return (
     <button
       type="submit"
@@ -154,7 +157,7 @@ function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
       {loading ? (
         <>
           <Loader2 size={17} strokeWidth={2.2} className="animate-spin" aria-hidden="true" />
-          One moment…
+          {t("auth.oneMoment")}
         </>
       ) : (
         <>
@@ -181,6 +184,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const { update } = useProfile();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [firstName, setFirstName] = useState("");
@@ -205,8 +209,6 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
     router.prefetch("/home");
   }, [router]);
 
-  // Keep the screen in sync when the route changes (e.g. #register → #login),
-  // since React reuses this component instead of remounting it.
   useEffect(() => {
     setMode(initialMode);
     setErrors({});
@@ -217,7 +219,6 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
     setSwap(true);
     setErrors({});
     timerRef.current = window.setTimeout(() => {
-      // Change the real route so the URL, back button and app state stay in sync.
       router.push(next === "login" ? "/login" : "/register");
       setPassword("");
       setSwap(false);
@@ -227,14 +228,14 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
   const validate = () => {
     const next: Record<string, string> = {};
     if (mode === "register") {
-      if (!firstName.trim()) next.firstName = "Please add your first name.";
-      if (!lastName.trim()) next.lastName = "Please add your last name.";
+      if (!firstName.trim()) next.firstName = t("auth.firstNameError");
+      if (!lastName.trim()) next.lastName = t("auth.lastNameError");
     }
-    if (!email.trim()) next.email = "Please add your email address.";
-    else if (!EMAIL_RE.test(email.trim())) next.email = "That email address doesn't look right.";
-    if (!password) next.password = "Please enter a password.";
+    if (!email.trim()) next.email = t("auth.emailError");
+    else if (!EMAIL_RE.test(email.trim())) next.email = t("auth.emailInvalidError");
+    if (!password) next.password = t("auth.passwordError");
     else if (mode === "register" && password.length < 8)
-      next.password = "Use at least 8 characters.";
+      next.password = t("auth.passwordLengthError");
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -251,7 +252,7 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
       if (mode === "register") {
         if (accounts.some((account) => account.email === normalisedEmail)) {
           setLoading(false);
-          setErrors({ email: "An account with this email already exists. Try signing in." });
+          setErrors({ email: t("auth.accountExistsError") });
           return;
         }
         const account: Account = {
@@ -262,8 +263,6 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
         };
         saveAccounts([...accounts, account]);
         update({ name: `${account.firstName} ${account.lastName}`, email: normalisedEmail });
-        // No confirmation pill here — the button keeps its loading state and we
-        // move straight into onboarding.
         timerRef.current = window.setTimeout(() => {
           router.push("/onboarding");
         }, 600);
@@ -276,12 +275,11 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
       if (!account) {
         setLoading(false);
         setErrors({
-          password: "We couldn't match that email and password. Try again or create an account.",
+          password: t("auth.invalidCredentialsError"),
         });
         return;
       }
       update({ name: `${account.firstName} ${account.lastName}`, email: account.email });
-      // Keep the button in its loading state; the splash screen takes over.
       timerRef.current = window.setTimeout(() => {
         router.push("/splash");
       }, 700);
@@ -302,13 +300,13 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
 
       <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[440px] flex-col px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))] sm:px-6">
         <header className="relative z-30 flex items-center justify-between gap-3 pt-2">
-          <a
-            href=""
-            aria-label="Back to the Mama Health home page"
+          <Link
+            href="/"
+            aria-label={t("common.back")}
             className="home-icon-solid flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
           >
             <ChevronLeft size={19} strokeWidth={1.9} />
-          </a>
+          </Link>
           <Brand />
           <LanguageSwitcher />
         </header>
@@ -320,20 +318,17 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
                 swap ? "translate-y-1 opacity-0" : "translate-y-0 opacity-100"
               }`}
             >
-              {isRegister ? "Create your account" : "Sign in to Mama Health"}
+              {isRegister ? t("auth.createTitle") : t("auth.signInTitle")}
             </h1>
             <p
               className={`mt-2.5 text-[14.5px] leading-relaxed text-[#6f6149] transition-opacity duration-300 dark:text-[#b9a88e] ${
                 swap ? "opacity-0" : "opacity-100"
               }`}
             >
-              {isRegister
-                ? "A calmer way to follow your pregnancy, week by week."
-                : "Your check-ins, reports and care team in one quiet place."}
+              {isRegister ? t("auth.createSub") : t("auth.signInSub")}
             </p>
           </div>
 
-          {/* Form directly on the background */}
           <form
             onSubmit={handleSubmit}
             noValidate
@@ -346,27 +341,27 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
                 <div className="grid grid-cols-2 gap-3">
                   <Field
                     id="first-name"
-                    label="First name"
+                    label={t("auth.firstName")}
                     value={firstName}
                     onChange={(value) => {
                       setFirstName(value);
                       setErrors((e) => ({ ...e, firstName: "" }));
                     }}
                     autoComplete="given-name"
-                    placeholder="Amara"
+                    placeholder={t("auth.firstNamePlaceholder")}
                     icon={<User size={16} strokeWidth={1.8} />}
                     error={errors.firstName}
                   />
                   <Field
                     id="last-name"
-                    label="Last name"
+                    label={t("auth.lastName")}
                     value={lastName}
                     onChange={(value) => {
                       setLastName(value);
                       setErrors((e) => ({ ...e, lastName: "" }));
                     }}
                     autoComplete="family-name"
-                    placeholder="Bennett"
+                    placeholder={t("auth.lastNamePlaceholder")}
                     icon={<User size={16} strokeWidth={1.8} />}
                     error={errors.lastName}
                   />
@@ -375,7 +370,7 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
 
               <Field
                 id="auth-email"
-                label="Email"
+                label={t("auth.email")}
                 type="email"
                 value={email}
                 onChange={(value) => {
@@ -383,21 +378,25 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
                   setErrors((e) => ({ ...e, email: "" }));
                 }}
                 autoComplete="email"
-                placeholder="you@example.com"
+                placeholder={t("auth.emailPlaceholder")}
                 icon={<Mail size={16} strokeWidth={1.8} />}
                 error={errors.email}
               />
 
               <Field
                 id="auth-password"
-                label="Password"
+                label={t("auth.password")}
                 value={password}
                 onChange={(value) => {
                   setPassword(value);
                   setErrors((e) => ({ ...e, password: "" }));
                 }}
                 autoComplete={isRegister ? "new-password" : "current-password"}
-                placeholder={isRegister ? "At least 8 characters" : "Your password"}
+                placeholder={
+                  isRegister
+                    ? t("auth.passwordCreatePlaceholder")
+                    : t("auth.passwordSignPlaceholder")
+                }
                 icon={<Lock size={16} strokeWidth={1.8} />}
                 error={errors.password}
                 reveal
@@ -406,23 +405,25 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
 
             {isRegister && (
               <p className="mt-3 text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
-                By continuing you agree to keep your account details private. This is a prototype —
-                accounts stay on this device.
+                {t("auth.prototypeNote")}
               </p>
             )}
 
             <div className="mt-5">
-              <SubmitButton loading={loading} label={isRegister ? "Create account" : "Sign in"} />
+              <SubmitButton
+                loading={loading}
+                label={isRegister ? t("auth.createAccount") : t("auth.signIn")}
+              />
             </div>
 
             <p className="mt-4 text-center text-[13px] text-[#6f6149] dark:text-[#b9a88e]">
-              {isRegister ? "Already have an account? " : "New to Mama Health? "}
+              {isRegister ? t("auth.alreadyHave") : t("auth.newTo")}
               <button
                 type="button"
                 onClick={() => switchMode(isRegister ? "login" : "register")}
                 className="font-medium text-[#8d6a2a] underline decoration-[#c9a35d]/60 underline-offset-4 transition-colors hover:text-[#4a3f30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#e5be79] dark:hover:text-[#f5ede0] dark:focus-visible:outline-[#e5be79]"
               >
-                {isRegister ? "Sign in" : "Create an account"}
+                {isRegister ? t("auth.signIn") : t("auth.createAccount")}
               </button>
             </p>
 
@@ -432,14 +433,14 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
                 prefetch={true}
                 className="rounded-full px-3 py-1.5 text-[12.5px] font-medium text-[#9b8a6f] underline decoration-[#c9a35d]/40 underline-offset-4 transition-colors hover:text-[#4a3f30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#9c8b72] dark:hover:text-[#f5ede0] dark:focus-visible:outline-[#e5be79]"
               >
-                Skip for now
+                {t("auth.skip")}
               </Link>
             </p>
           </form>
 
           <p className="mt-6 flex items-center justify-center gap-2 text-center text-[12px] leading-relaxed text-[#9b8a6f] dark:text-[#9c8b72]">
             <Heart size={12} strokeWidth={2} aria-hidden="true" />
-            Gentle, private care — always in your hands.
+            {t("auth.tagline")}
           </p>
         </div>
       </div>

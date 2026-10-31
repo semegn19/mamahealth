@@ -19,6 +19,7 @@ import {
 import { LeafMark } from "../components/LeafMark";
 import { ThemeSelect } from "../components/ThemeSelect";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { useTranslation } from "../components/languageStore";
 import {
   COMPLICATION_OPTIONS,
   CONDITION_OPTIONS,
@@ -45,12 +46,38 @@ import { useRouter } from "next/navigation";
 type Stage = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type Screen = "welcome" | Stage | "complete";
 
-const RESIDENCE_PILL_OPTIONS: { value: Residence; label: string }[] = [
-  { value: "Rural", label: "Rural" },
-  { value: "Urban", label: "Urban" },
+const TOTAL_STEPS: Stage = 7;
+
+const ETHIOPIAN_MONTHS_AM = [
+  "መስከረም",
+  "ጥቅምት",
+  "ኅዳር",
+  "ታኅሣሥ",
+  "ጥር",
+  "የካቲት",
+  "መጋቢት",
+  "ሚያዝያ",
+  "ግንቦት",
+  "ሰኔ",
+  "ሐምሌ",
+  "ነሐሴ",
+  "ጳጉሜን",
 ];
 
-const TOTAL_STEPS: Stage = 7;
+const GREGORIAN_MONTHS_AM = [
+  "ጃንዋሪ",
+  "ፌብሩዋሪ",
+  "ማርች",
+  "ኤፕሪል",
+  "ሜይ",
+  "ጁን",
+  "ጁላይ",
+  "ኦገስት",
+  "ሴፕቴምበር",
+  "ኦክቶበር",
+  "ኖቬምበር",
+  "ዲሴምበር",
+];
 
 /* ------------------------------------------------------------------ */
 /* Small building blocks                                               */
@@ -179,6 +206,7 @@ function YesNoQuestion({
   error?: string;
   hideLabel?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div>
       <p
@@ -191,8 +219,8 @@ function YesNoQuestion({
       </p>
       <div className="mt-2.5 grid grid-cols-2 gap-2.5" role="group" aria-labelledby={id}>
         {[
-          { label: "Yes", value: true },
-          { label: "No", value: false },
+          { label: t("common.yes"), value: true },
+          { label: t("common.no"), value: false },
         ].map((option) => {
           const active = value === option.value;
           return (
@@ -266,7 +294,7 @@ function AddField({
   value,
   onChange,
   onAdd,
-  addLabel = "Add",
+  addLabel,
 }: {
   id: string;
   label: string;
@@ -276,6 +304,9 @@ function AddField({
   onAdd: () => void;
   addLabel?: string;
 }) {
+  const { t } = useTranslation();
+  const resolvedAddLabel = addLabel || (t("common.save") !== "common.save" ? t("common.save") : "Add");
+
   return (
     <form
       onSubmit={(event) => {
@@ -305,7 +336,7 @@ function AddField({
           className="flex min-h-12 shrink-0 items-center gap-1.5 rounded-full bg-[#4a3f30] px-5 text-[14px] font-medium text-[#fffaf0] transition enabled:hover:bg-[#655039] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-[#e5be79] dark:text-[#231b12] dark:enabled:hover:bg-[#f0cf92]"
         >
           <Plus size={15} strokeWidth={2.4} aria-hidden="true" />
-          {addLabel}
+          {resolvedAddLabel}
         </button>
       </div>
     </form>
@@ -319,6 +350,7 @@ function DateSelect({
   onChange,
   options,
   error,
+  selectLabel,
 }: {
   id: string;
   label: string;
@@ -326,7 +358,9 @@ function DateSelect({
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
   error?: string;
+  selectLabel?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="min-w-0">
       <label
@@ -346,7 +380,7 @@ function DateSelect({
             : "border-[#d8c6a4] dark:border-[#4a3c2c]"
         } ${value ? "" : "text-[#a99b84] dark:text-[#7d6e58]"}`}
       >
-        <option value="">Select</option>
+        <option value="">{selectLabel || t("onboarding.select")}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -408,6 +442,7 @@ function MicWaveform() {
 
 /** Calm completion state, shown once onboarding finishes. */
 function OnboardingComplete({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
   useEffect(() => {
     const timer = window.setTimeout(onDone, 2600);
     return () => window.clearTimeout(timer);
@@ -423,10 +458,10 @@ function OnboardingComplete({ onDone }: { onDone: () => void }) {
         />
       </span>
       <h2 className="mt-7 text-[28px] font-light leading-[1.2] tracking-[-0.03em] text-[#3b3226] dark:text-[#f5ede0]">
-        Your care is set up
+        {t("onboarding.careSetUp")}
       </h2>
       <p className="mt-3 max-w-[30ch] text-[14.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-        Mama Health is ready to follow your journey, day by day.
+        {t("onboarding.careSetUpSub")}
       </p>
     </div>
   );
@@ -438,8 +473,8 @@ function OnboardingComplete({ onDone }: { onDone: () => void }) {
 
 export function OnboardingPage() {
   const router = useRouter();
-  // Server-rendered markup uses the blank flow; the saved answers are applied
-  // on mount so hydration always matches.
+  const { t, isAmharic } = useTranslation();
+
   const [data, setData] = useState<OnboardingData>(EMPTY_ONBOARDING);
   const [hydrated, setHydrated] = useState(false);
   const [screen, setScreen] = useState<Screen>("welcome");
@@ -465,7 +500,6 @@ export function OnboardingPage() {
   }, []);
 
   useEffect(() => {
-    // Never write before the stored answers have been read back in.
     if (!hydrated) return;
     saveOnboarding(data);
   }, [data, hydrated]);
@@ -491,7 +525,10 @@ export function OnboardingPage() {
 
   /* ----------------------------- Dating maths ----------------------------- */
 
-  const months = data.calendar === "ethiopian" ? ETHIOPIAN_MONTHS : GREGORIAN_MONTHS;
+  const months = isAmharic
+    ? (data.calendar === "ethiopian" ? ETHIOPIAN_MONTHS_AM : GREGORIAN_MONTHS_AM)
+    : (data.calendar === "ethiopian" ? ETHIOPIAN_MONTHS : GREGORIAN_MONTHS);
+
   const yearFrom = data.calendar === "ethiopian" ? 2008 : 2020;
   const yearTo = data.calendar === "ethiopian" ? 2028 : 2035;
   const years = Array.from({ length: yearTo - yearFrom + 1 }, (_, i) => yearTo - i);
@@ -533,16 +570,23 @@ export function OnboardingPage() {
     return gestationFromLmp(lmpDate);
   }, [data.dating, lmpDate, knownWeeks, knownDays]);
 
+  const getOptionLabel = (option: string) => {
+    const key = `onboarding.options.${option}`;
+    const translated = t(key);
+    return translated === key ? option : translated;
+  };
+
   /* ----------------------------- Validation ----------------------------- */
 
   const validateStage1 = () => {
     const next: Record<string, string> = {};
     const age = Number(data.age);
-    if (!data.age) next.age = "Please add your age.";
-    else if (!Number.isFinite(age) || age < 12 || age > 65) next.age = "Enter an age between 12 and 65.";
-    if (!data.residence) next.residence = "Choose where you live.";
+    if (!data.age) next.age = isAmharic ? "እባክዎ ዕድሜዎን ያስገቡ።" : "Please add your age.";
+    else if (!Number.isFinite(age) || age < 12 || age > 65)
+      next.age = isAmharic ? "እባክዎ ዕድሜዎን በ12 እና 65 መካከል ያስገቡ።" : "Enter an age between 12 and 65.";
+    if (!data.residence) next.residence = isAmharic ? "የሚኖሩበትን አካባቢ ይምረጡ።" : "Choose where you live.";
     if (data.liveBirths > data.totalPregnancies) {
-      next.births = "Live births can't be more than total pregnancies.";
+      next.births = isAmharic ? "የቀጥታ ልደቶች ከጠቅላላ እርግዝና ሊበልጥ አይችልም።" : "Live births can't be more than total pregnancies.";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -551,17 +595,17 @@ export function OnboardingPage() {
   const validateStage2 = () => {
     const next: Record<string, string> = {};
     if (data.dating === "lmp") {
-      if (!data.lmpDay) next.lmp = "Add the day.";
-      else if (!data.lmpMonth) next.lmp = "Add the month.";
-      else if (!data.lmpYear) next.lmp = "Add the year.";
-      else if (!lmpDate) next.lmp = "That date doesn't exist — please check it.";
-      else if (!dating) next.lmp = "Please check the date.";
-      else if (dating.days < 0) next.lmp = "The first day of your last period can't be in the future.";
-      else if (dating.days > 320) next.lmp = "That date is more than 45 weeks ago. Check it, or use “I know the date”.";
+      if (!data.lmpDay) next.lmp = isAmharic ? "ቀኑን ያስገቡ።" : "Add the day.";
+      else if (!data.lmpMonth) next.lmp = isAmharic ? "ወሩን ያስገቡ።" : "Add the month.";
+      else if (!data.lmpYear) next.lmp = isAmharic ? "ዓመቱን ያስገቡ።" : "Add the year.";
+      else if (!lmpDate) next.lmp = isAmharic ? "ይህ ቀን ትክክል አይደለም — እባክዎ ያረጋግጡ።" : "That date doesn't exist — please check it.";
+      else if (!dating) next.lmp = isAmharic ? "እባክዎ ቀኑን ያረጋግጡ።" : "Please check the date.";
+      else if (dating.days < 0) next.lmp = isAmharic ? "የመጨረሻ የወር አበባ የመጀመሪያ ቀን ወደፊት ሊሆን አይችልም።" : "The first day of your last period can't be in the future.";
+      else if (dating.days > 320) next.lmp = isAmharic ? "ያ ቀን ከ45 ሳምንታት በላይ ነው። እባክዎ ያረጋግጡ።" : "That date is more than 45 weeks ago. Check it, or use “I know the date”.";
     } else {
-      if (data.knownWeeks === "") next.known = "Add how many weeks you've been pregnant.";
-      else if (knownWeeks > 42) next.known = "Weeks should be between 0 and 42.";
-      else if (knownDays > 6) next.known = "Days should be between 0 and 6.";
+      if (data.knownWeeks === "") next.known = isAmharic ? "ስንት ሳምንታት እንደሆኖት ያስገቡ።" : "Add how many weeks you've been pregnant.";
+      else if (knownWeeks > 42) next.known = isAmharic ? "ሳምንታት በ0 እና 42 መካከል መሆን አለበት።" : "Weeks should be between 0 and 42.";
+      else if (knownDays > 6) next.known = isAmharic ? "ቀናት በ0 እና 6 መካከል መሆን አለበት።" : "Days should be between 0 and 6.";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -569,29 +613,27 @@ export function OnboardingPage() {
 
   const validateStage3 = () => {
     const next: Record<string, string> = {};
-    if (data.hadCesarean === null) next.cesarean = "Please answer yes or no.";
-    if (data.hadStillbirth === null) next.stillbirth = "Please answer yes or no.";
-    if (data.malariaArea === null) next.malaria = "Please answer yes or no.";
+    if (data.hadCesarean === null) next.cesarean = isAmharic ? "እባክዎ አዎ ወይም አይደለም ብለው ይመልሱ።" : "Please answer yes or no.";
+    if (data.hadStillbirth === null) next.stillbirth = isAmharic ? "እባክዎ አዎ ወይም አይደለም ብለው ይመልሱ።" : "Please answer yes or no.";
+    if (data.malariaArea === null) next.malaria = isAmharic ? "እባክዎ አዎ ወይም አይደለም ብለው ይመልሱ።" : "Please answer yes or no.";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
   const validateStage4 = () => {
-    // Conditions are optional — many people have none.
     setErrors({});
     return true;
   };
 
   const validateStage5 = () => {
     const next: Record<string, string> = {};
-    if (data.takesMedications === null) next.meds = "Please answer yes or no.";
+    if (data.takesMedications === null) next.meds = isAmharic ? "እባክዎ አዎ ወይም አይደለም ብለው ይመልሱ።" : "Please answer yes or no.";
     else if (data.takesMedications && data.medications.length === 0)
-      next.meds = "Add at least one medication, or choose No.";
+      next.meds = isAmharic ? "ቢያንስ አንድ መድኃኒት ይጨምሩ፣ ወይም 'አይደለም' የሚለውን ይምረጡ።" : "Add at least one medication, or choose No.";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
-  // The permission stage has no required fields — either action finishes.
   const validateStage7 = () => {
     setErrors({});
     return true;
@@ -599,9 +641,9 @@ export function OnboardingPage() {
 
   const validateStage6 = () => {
     const next: Record<string, string> = {};
-    if (data.takesSupplements === null) next.supp = "Please answer yes or no.";
+    if (data.takesSupplements === null) next.supp = isAmharic ? "እባክዎ አዎ ወይም አይደለም ብለው ይመልሱ።" : "Please answer yes or no.";
     else if (data.takesSupplements && data.supplementChoices.length === 0)
-      next.supp = "Select at least one supplement, or choose No.";
+      next.supp = isAmharic ? "ቢያንስ አንድ ተጨማሪ ንጥረ ነገር ይምረጡ፣ ወይም 'አይደለም' የሚለውን ይምረጡ።" : "Select at least one supplement, or choose No.";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -609,20 +651,16 @@ export function OnboardingPage() {
   const toggleListItem = (list: string[], item: string) =>
     list.includes(item) ? list.filter((entry) => entry !== item) : [...list, item];
 
-  /** Try the voice check-in: request the mic, then run the prototype flow. */
   const tryVoiceCheckin = () => {
     if (navigator.mediaDevices?.getUserMedia) {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => stream.getTracks().forEach((track) => track.stop()))
-        .catch(() => {
-          // The prototype continues either way; a real build would show guidance.
-        });
+        .catch(() => {});
     }
     finishOnboarding();
   };
 
-  /** Grant or decline, onboarding is complete either way. */
   const finishOnboarding = () => {
     const finished = { ...data, completed: true };
     setData(finished);
@@ -641,10 +679,7 @@ export function OnboardingPage() {
       validateStage7,
     ];
     if (!validators[stage - 1]()) return;
-    if (stage === TOTAL_STEPS) {
-      // The final stage is the mic permission, which has its own actions.
-      return;
-    }
+    if (stage === TOTAL_STEPS) return;
     goStage((stage + 1) as Stage);
   };
 
@@ -666,8 +701,27 @@ export function OnboardingPage() {
     }, 260);
   };
 
-  const dueText = dating ? formatGregorian(dating.dueDate) : null;
+  const dueText = dating
+    ? isAmharic
+      ? dating.dueDate.toLocaleDateString("am-ET", { year: "numeric", month: "long", day: "numeric" })
+      : formatGregorian(dating.dueDate)
+    : null;
   const dueEthiopian = dating ? formatEthiopian(dating.dueDate) : null;
+
+  const residencePillOptions: { value: Residence; label: string }[] = [
+    { value: "Rural", label: t("onboarding.rural") },
+    { value: "Urban", label: t("onboarding.urban") },
+  ];
+
+  const datingModeOptions: { value: DatingMode; label: string }[] = [
+    { value: "lmp", label: t("onboarding.datingLmp") },
+    { value: "known", label: t("onboarding.datingKnown") },
+  ];
+
+  const calendarSystemOptions: { value: CalendarSystem; label: string; hint: string }[] = [
+    { value: "gregorian", label: t("onboarding.gregorian"), hint: "G.C." },
+    { value: "ethiopian", label: t("onboarding.ethiopian"), hint: "E.C." },
+  ];
 
   return (
     <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[#f3ecdf] text-[#4a3f30] dark:bg-[#15120e] dark:text-[#f0e4ce]">
@@ -685,7 +739,7 @@ export function OnboardingPage() {
           {screen === "welcome" ? (
             <a
               href="#login"
-              aria-label="Back to sign in"
+              aria-label={t("common.back")}
               className="home-icon-solid flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95"
             >
               <ChevronLeft size={19} strokeWidth={1.9} />
@@ -694,7 +748,7 @@ export function OnboardingPage() {
             <button
               type="button"
               onClick={goBack}
-              aria-label="Back a step"
+              aria-label={t("common.back")}
               className="home-icon-solid flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95"
             >
               <ChevronLeft size={19} strokeWidth={1.9} />
@@ -750,33 +804,31 @@ export function OnboardingPage() {
               className={`transition-all duration-300 ${leaving ? "-translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}
             >
               <h1 className="whitespace-nowrap text-[clamp(26px,7.5vw,34px)] font-light leading-[1.12] tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
-                Let&apos;s set up your care.
+                {t("onboarding.letsSetUpCare")}
               </h1>
               <p className="mt-3 text-[15px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                A short, gentle set-up so Mama Health can follow your pregnancy accurately and prepare
-                the right care at the right time.
+                {t("onboarding.welcomeSubtitle")}
               </p>
 
-              {/* Items directly on the background without cards or circle badge wrappers */}
               <ol className="mt-8 space-y-5">
                 {[
                   {
                     icon: <Heart size={20} strokeWidth={1.8} />,
-                    title: "A little about you",
-                    body: "Your age, where you live and your pregnancy history.",
+                    title: t("onboarding.aboutYou"),
+                    body: t("onboarding.aboutYouDesc"),
                   },
                   {
                     icon: <CalendarDays size={20} strokeWidth={1.8} />,
-                    title: "Your dates",
-                    body: "Work out how far along you are, in either calendar.",
+                    title: t("onboarding.yourDates"),
+                    body: t("onboarding.yourDatesDesc"),
                   },
                   {
                     icon: <Baby size={20} strokeWidth={1.8} />,
-                    title: "Your care plan",
-                    body: "Reminders, check-ins and reports shaped around you.",
+                    title: t("onboarding.carePlan"),
+                    body: t("onboarding.carePlanDesc"),
                   },
                 ].map((item, index) => (
-                  <li key={item.title} className="flex items-start gap-3.5">
+                  <li key={index} className="flex items-start gap-3.5">
                     <span className="mt-0.5 text-[#8d6a2a] dark:text-[#e5be79]" aria-hidden="true">
                       {item.icon}
                     </span>
@@ -799,8 +851,7 @@ export function OnboardingPage() {
                   className="mt-0.5 shrink-0 text-[#8d6a2a] dark:text-[#e5be79]"
                   aria-hidden="true"
                 />
-                About 3 minutes. You can change any answer later in settings, and your details stay
-                private to your care team.
+                {t("onboarding.timeEstimate")}
               </p>
             </div>
           )}
@@ -813,20 +864,20 @@ export function OnboardingPage() {
               {stage === 1 && (
                 <>
                   <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    A few basics first
+                    {t("onboarding.stage1Title")}
                   </h2>
                   <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    These shape the guidance and appointment schedule you&apos;ll see.
+                    {t("onboarding.stage1Sub")}
                   </p>
 
                   <div className="mt-7 space-y-5">
-                    {/* Age — plain on background */}
+                    {/* Age */}
                     <div>
                       <label
                         htmlFor="age"
                         className="block text-[14.5px] font-medium text-[#3b3226] dark:text-[#f5ede0]"
                       >
-                        Age
+                        {t("onboarding.age")}
                       </label>
                       <div className="relative mt-2">
                         <input
@@ -837,7 +888,7 @@ export function OnboardingPage() {
                           max={65}
                           value={data.age}
                           onChange={(event) => update({ age: event.target.value })}
-                          placeholder="e.g. 28"
+                          placeholder={t("onboarding.agePlaceholder")}
                           aria-invalid={Boolean(errors.age)}
                           className={`min-h-12 w-full rounded-2xl border bg-white/85 px-4 py-3 text-[15px] text-[#3b3226] outline-none transition-colors focus:border-[#a87a3d] focus:bg-white dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79] dark:focus:bg-[#1d1711] ${
                             errors.age
@@ -846,7 +897,7 @@ export function OnboardingPage() {
                           }`}
                         />
                         <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-[#9b8a6f] dark:text-[#9c8b72]">
-                          years
+                          {t("onboarding.years")}
                         </span>
                       </div>
                       {errors.age && (
@@ -856,7 +907,7 @@ export function OnboardingPage() {
                       )}
                     </div>
 
-                    {/* Residence area — sliding pill */}
+                    {/* Residence area */}
                     <div>
                       <div className="flex items-center justify-between gap-2">
                         <label className="flex items-center gap-1.5 text-[14.5px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
@@ -866,20 +917,20 @@ export function OnboardingPage() {
                             className="text-[#8d6a2a] dark:text-[#e5be79]"
                             aria-hidden="true"
                           />
-                          Residence area
+                          {t("onboarding.residenceArea")}
                         </label>
                         {data.residence && (
                           <span className="text-[12px] text-[#8d6a2a] dark:text-[#dfb870]">
-                            {data.residence}
+                            {data.residence === "Rural" ? t("onboarding.rural") : t("onboarding.urban")}
                           </span>
                         )}
                       </div>
                       <div className="mt-2">
                         <SegmentedSwitch<Residence>
-                          label="Residence area"
+                          label={t("onboarding.residenceArea")}
                           value={(data.residence as Residence) || "Urban"}
                           onChange={(value) => update({ residence: value })}
-                          options={RESIDENCE_PILL_OPTIONS}
+                          options={residencePillOptions}
                         />
                       </div>
                       {errors.residence && (
@@ -889,12 +940,12 @@ export function OnboardingPage() {
                       )}
                     </div>
 
-                    {/* Total pregnancies & Live births — no card, no number circles */}
+                    {/* Total pregnancies & Live births */}
                     <div className="divide-y divide-[#d8c6a4]/50 pt-1 dark:divide-[#3d3123]">
                       <NumberStepper
                         id="total-pregnancies"
-                        label="Total pregnancies"
-                        hint="Including this one"
+                        label={t("onboarding.totalPregnancies")}
+                        hint={t("onboarding.totalPregnanciesHint")}
                         value={data.totalPregnancies}
                         min={0}
                         max={20}
@@ -903,8 +954,8 @@ export function OnboardingPage() {
 
                       <NumberStepper
                         id="live-births"
-                        label="Live births"
-                        hint="How many children you've had"
+                        label={t("onboarding.liveBirths")}
+                        hint={t("onboarding.liveBirthsHint")}
                         value={data.liveBirths}
                         min={0}
                         max={20}
@@ -924,27 +975,23 @@ export function OnboardingPage() {
               {stage === 2 && (
                 <>
                   <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    How far along are you?
+                    {t("onboarding.stage2Title")}
                   </h2>
                   <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    We use this to date your pregnancy and plan your appointments.
+                    {t("onboarding.stage2Sub")}
                   </p>
 
                   <div className="mt-6">
                     <SegmentedSwitch<DatingMode>
-                      label="Pregnancy dating method"
+                      label={t("onboarding.stage2Title")}
                       value={data.dating}
                       onChange={(value) => update({ dating: value })}
-                      options={[
-                        { value: "lmp", label: "LMP" },
-                        { value: "known", label: "I know the date" },
-                      ]}
+                      options={datingModeOptions}
                     />
                   </div>
 
                   {data.dating === "lmp" && (
                     <div className="mt-6 space-y-5">
-                      {/* Date selects — directly on background, with calendar dropdown beside question */}
                       <div>
                         <div className="flex items-center justify-between gap-2.5">
                           <p className="flex min-w-0 items-center gap-1.5 text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
@@ -954,16 +1001,13 @@ export function OnboardingPage() {
                               className="shrink-0 text-[#8d6a2a] dark:text-[#e5be79]"
                               aria-hidden="true"
                             />
-                            <span>First day of your last period</span>
+                            <span>{t("onboarding.lastPeriodDay")}</span>
                           </p>
                           <ThemeSelect<CalendarSystem>
                             id="calendar-system"
-                            label="Calendar system"
+                            label={t("onboarding.calendarSystem")}
                             value={(data.calendar || "gregorian") as CalendarSystem}
-                            options={[
-                              { value: "gregorian", label: "Gregorian", hint: "G.C." },
-                              { value: "ethiopian", label: "Ethiopian", hint: "E.C." },
-                            ]}
+                            options={calendarSystemOptions}
                             onChange={(calendar) => {
                               if (calendar === data.calendar) return;
                               update({ calendar, lmpDay: "", lmpMonth: "", lmpYear: "" });
@@ -973,27 +1017,30 @@ export function OnboardingPage() {
                         <div className="mt-2.5 grid grid-cols-3 gap-2.5">
                           <DateSelect
                             id="lmp-day"
-                            label="Day"
+                            label={t("onboarding.day")}
                             value={data.lmpDay}
                             onChange={(value) => update({ lmpDay: value })}
                             options={dayOptions}
+                            selectLabel={t("onboarding.select")}
                           />
                           <DateSelect
                             id="lmp-month"
-                            label="Month"
+                            label={t("onboarding.month")}
                             value={data.lmpMonth}
                             onChange={(value) => update({ lmpMonth: value })}
                             options={monthOptions}
+                            selectLabel={t("onboarding.select")}
                           />
                           <DateSelect
                             id="lmp-year"
-                            label="Year"
+                            label={t("onboarding.year")}
                             value={data.lmpYear}
                             onChange={(value) => update({ lmpYear: value })}
                             options={years.map((year) => ({
                               value: String(year),
                               label: String(year),
                             }))}
+                            selectLabel={t("onboarding.select")}
                           />
                         </div>
                         {errors.lmp && (
@@ -1006,26 +1053,27 @@ export function OnboardingPage() {
                       {dating && dating.days >= 0 && (
                         <div aria-live="polite" className="home-glass-gold rounded-[22px] p-4.5">
                           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#6f5a35] dark:text-[#e5be79]">
-                            Based on your dates
+                            {t("onboarding.basedOnDates")}
                           </p>
                           <p className="mt-1.5 text-[21px] font-medium leading-snug text-[#3b3226] dark:text-[#f5ede0]">
-                            {dating.weeks} weeks, {dating.remainingDays}{" "}
-                            {dating.remainingDays === 1 ? "day" : "days"} along
+                            {dating.weeks} {t("onboarding.weeks")}, {dating.remainingDays}{" "}
+                            {dating.remainingDays === 1 ? (isAmharic ? "ቀን" : "day") : (isAmharic ? "ቀናት" : "days")}{" "}
+                            {t("onboarding.weeksAlong")}
                           </p>
                           <p className="mt-1 text-[13px] text-[#6f5a35] dark:text-[#d8c7ab]">
-                            {dating.trimester === 0 ? "Due today" : `Trimester ${dating.trimester}`}
+                            {dating.trimester === 0 ? t("onboarding.dueToday") : `${t("onboarding.trimester")} ${dating.trimester}`}
                             {dating.trimester > 0 ? " · " : ""}
-                            {Math.max(0, 280 - dating.days)} days to go
+                            {Math.max(0, 280 - dating.days)} {t("onboarding.daysToGo")}
                           </p>
                           <div className="mt-3 border-t border-[#b98a3e]/25 pt-2.5 dark:border-[#e5be79]/22">
                             <p className="text-[12px] text-[#7b6642] dark:text-[#b9a88e]">
-                              Estimated due date
+                              {t("onboarding.estimatedDueDate")}
                             </p>
                             <p className="text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
                               {dueText}
                             </p>
                             <p className="mt-0.5 text-[12px] text-[#85735a] dark:text-[#c7b69c]">
-                              {dueEthiopian} (Ethiopian)
+                              {dueEthiopian} ({t("onboarding.ethiopian")})
                             </p>
                           </div>
                         </div>
@@ -1035,10 +1083,9 @@ export function OnboardingPage() {
 
                   {data.dating === "known" && (
                     <div className="mt-6 space-y-5">
-                      {/* Known weeks & days — directly on background */}
                       <div>
                         <p className="text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                          How many weeks and days have you been pregnant?
+                          {t("onboarding.howManyWeeksDays")}
                         </p>
                         <div className="mt-2.5 grid grid-cols-2 gap-3">
                           <div>
@@ -1046,7 +1093,7 @@ export function OnboardingPage() {
                               htmlFor="known-weeks"
                               className="block text-[12px] font-medium text-[#6f6149] dark:text-[#b9a88e]"
                             >
-                              Weeks
+                              {t("onboarding.weeks")}
                             </label>
                             <input
                               id="known-weeks"
@@ -1070,7 +1117,7 @@ export function OnboardingPage() {
                               htmlFor="known-days"
                               className="block text-[12px] font-medium text-[#6f6149] dark:text-[#b9a88e]"
                             >
-                              Days
+                              {t("onboarding.daysLabel")}
                             </label>
                             <input
                               id="known-days"
@@ -1097,25 +1144,26 @@ export function OnboardingPage() {
                         Number(data.knownDays) <= 6 && (
                           <div aria-live="polite" className="home-glass-gold rounded-[22px] p-4.5">
                             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#6f5a35] dark:text-[#e5be79]">
-                              Based on what you know
+                              {t("onboarding.basedOnKnown")}
                             </p>
                             <p className="mt-1.5 text-[21px] font-medium leading-snug text-[#3b3226] dark:text-[#f5ede0]">
-                              {knownWeeks} weeks, {knownDays} {knownDays === 1 ? "day" : "days"}{" "}
-                              along
+                              {knownWeeks} {t("onboarding.weeks")}, {knownDays}{" "}
+                              {knownDays === 1 ? (isAmharic ? "ቀን" : "day") : (isAmharic ? "ቀናት" : "days")}{" "}
+                              {t("onboarding.weeksAlong")}
                             </p>
                             <p className="mt-1 text-[13px] text-[#6f5a35] dark:text-[#d8c7ab]">
-                              Trimester {dating?.trimester} ·{" "}
-                              {Math.max(0, 280 - (knownWeeks * 7 + knownDays))} days to go
+                              {t("onboarding.trimester")} {dating?.trimester} ·{" "}
+                              {Math.max(0, 280 - (knownWeeks * 7 + knownDays))} {t("onboarding.daysToGo")}
                             </p>
                             <div className="mt-3 border-t border-[#b98a3e]/25 pt-2.5 dark:border-[#e5be79]/22">
                               <p className="text-[12px] text-[#7b6642] dark:text-[#b9a88e]">
-                                Estimated due date
+                                {t("onboarding.estimatedDueDate")}
                               </p>
                               <p className="text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
                                 {dueText}
                               </p>
                               <p className="mt-0.5 text-[12px] text-[#85735a] dark:text-[#c7b69c]">
-                                {dueEthiopian} (Ethiopian)
+                                {dueEthiopian} ({t("onboarding.ethiopian")})
                               </p>
                             </div>
                           </div>
@@ -1131,8 +1179,8 @@ export function OnboardingPage() {
                       aria-hidden="true"
                     />
                     {data.dating === "lmp"
-                      ? "Not sure of the exact day? A close estimate is fine — your midwife will confirm at your first scan."
-                      : "You can change this later if your scan gives a different date."}
+                      ? t("onboarding.lmpHint")
+                      : t("onboarding.knownHint")}
                   </p>
                 </>
               )}
@@ -1141,30 +1189,30 @@ export function OnboardingPage() {
               {stage === 3 && (
                 <>
                   <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    Your pregnancy history
+                    {t("onboarding.stage3Title")}
                   </h2>
                   <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    This helps us spot anything that needs closer care this time.
+                    {t("onboarding.stage3Sub")}
                   </p>
 
                   <div className="mt-7 space-y-6">
                     <YesNoQuestion
                       id="had-cesarean"
-                      question="Have you ever had a Cesarean delivery?"
+                      question={t("onboarding.cesareanQ")}
                       value={data.hadCesarean}
                       onChange={(value) => update({ hadCesarean: value })}
                       error={errors.cesarean}
                     />
                     <YesNoQuestion
                       id="had-stillbirth"
-                      question="Any history of stillbirth or neonatal loss?"
+                      question={t("onboarding.stillbirthQ")}
                       value={data.hadStillbirth}
                       onChange={(value) => update({ hadStillbirth: value })}
                       error={errors.stillbirth}
                     />
                     <YesNoQuestion
                       id="malaria-area"
-                      question="Do you live in or frequently visit a malaria-endemic area?"
+                      question={t("onboarding.malariaQ")}
                       value={data.malariaArea}
                       onChange={(value) => update({ malariaArea: value })}
                       error={errors.malaria}
@@ -1172,16 +1220,16 @@ export function OnboardingPage() {
 
                     <div className="border-t border-[#d8c6a4]/60 pt-5 dark:border-[#3d3123]">
                       <p className="text-[15px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                        Past Pregnancy Complications
+                        {t("onboarding.complicationsTitle")}
                       </p>
                       <p className="mt-1 text-[12.5px] text-[#85735a] dark:text-[#9c8b72]">
-                        Select any you&apos;ve experienced — or leave blank if none.
+                        {t("onboarding.complicationsSub")}
                       </p>
                       <div className="mt-3 space-y-2">
                         {COMPLICATION_OPTIONS.map((option) => (
                           <ChoiceRow
                             key={option}
-                            label={option}
+                            label={getOptionLabel(option)}
                             selected={data.complications.includes(option)}
                             onToggle={() =>
                               update({ complications: toggleListItem(data.complications, option) })
@@ -1226,7 +1274,7 @@ export function OnboardingPage() {
                         ))}
 
                         <ChoiceRow
-                          label="Other"
+                          label={t("onboarding.other")}
                           selected={showOtherComplicationField}
                           onToggle={() =>
                             setShowOtherComplicationField((current) => !current)
@@ -1238,8 +1286,8 @@ export function OnboardingPage() {
                         <div className="mt-4">
                           <AddField
                             id="other-complication"
-                            label="Specify Other Pregnancy Complication"
-                            placeholder="e.g. Placenta previa"
+                            label={t("onboarding.specifyOtherComplication")}
+                            placeholder={isAmharic ? "ለምሳሌ ፕላሴንታ ፕሪቪያ" : "e.g. Placenta previa"}
                             value={otherComplicationDraft}
                             onChange={setOtherComplicationDraft}
                             onAdd={() => {
@@ -1259,6 +1307,7 @@ export function OnboardingPage() {
                               }
                               setOtherComplicationDraft("");
                             }}
+                            addLabel={t("common.save")}
                           />
                         </div>
                       )}
@@ -1271,17 +1320,17 @@ export function OnboardingPage() {
               {stage === 4 && (
                 <>
                   <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    Known Medical Conditions
+                    {t("onboarding.stage4Title")}
                   </h2>
                   <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    Select any that apply. Add anything else so your care team knows.
+                    {t("onboarding.stage4Sub")}
                   </p>
 
                   <div className="mt-6 space-y-2">
                     {CONDITION_OPTIONS.map((option) => (
                       <ChoiceRow
                         key={option}
-                        label={option}
+                        label={getOptionLabel(option)}
                         selected={data.conditions.includes(option)}
                         onToggle={() =>
                           update({ conditions: toggleListItem(data.conditions, option) })
@@ -1324,7 +1373,7 @@ export function OnboardingPage() {
                     ))}
 
                     <ChoiceRow
-                      label="Other"
+                      label={t("onboarding.other")}
                       selected={showOtherField}
                       onToggle={() => setShowOtherField((current) => !current)}
                     />
@@ -1334,8 +1383,8 @@ export function OnboardingPage() {
                     <div className="mt-4">
                       <AddField
                         id="other-condition"
-                        label="Specify Other Medical Condition"
-                        placeholder="e.g. Thyroid condition"
+                        label={t("onboarding.specifyOtherCondition")}
+                        placeholder={isAmharic ? "ለምሳሌ የታይሮይድ ችግር" : "e.g. Thyroid condition"}
                         value={otherConditionDraft}
                         onChange={setOtherConditionDraft}
                         onAdd={() => {
@@ -1355,6 +1404,7 @@ export function OnboardingPage() {
                           }
                           setOtherConditionDraft("");
                         }}
+                        addLabel={t("common.save")}
                       />
                     </div>
                   )}
@@ -1365,16 +1415,16 @@ export function OnboardingPage() {
               {stage === 5 && (
                 <>
                   <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    Do you take any medications?
+                    {t("onboarding.stage5Title")}
                   </h2>
                   <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    Include anything prescribed, over-the-counter, or traditional.
+                    {t("onboarding.stage5Sub")}
                   </p>
 
                   <div className="mt-6 space-y-5">
                     <YesNoQuestion
                       id="takes-medications"
-                      question="Do you take any medications?"
+                      question={t("onboarding.takesMedicationsQ")}
                       value={data.takesMedications}
                       onChange={(value) => update({ takesMedications: value })}
                       error={errors.meds}
@@ -1384,8 +1434,8 @@ export function OnboardingPage() {
                       <div>
                         <AddField
                           id="medication-name"
-                          label="Specify the medications you take"
-                          placeholder="e.g. Folic acid 5mg"
+                          label={t("onboarding.specifyMedications")}
+                          placeholder={isAmharic ? "ለምሳሌ ፎሊክ አሲድ 5ሚግ" : "e.g. Folic acid 5mg"}
                           value={medDraft}
                           onChange={setMedDraft}
                           onAdd={() => {
@@ -1400,15 +1450,16 @@ export function OnboardingPage() {
                             }
                             setMedDraft("");
                           }}
+                          addLabel={t("common.save")}
                         />
 
                         {data.medications.length > 0 && (
                           <div className="mt-5">
                             <p className="text-[13.5px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]">
-                              Current medications
+                              {t("onboarding.currentMedications")}
                             </p>
                             <ul
-                              aria-label="Current medications"
+                              aria-label={t("onboarding.currentMedications")}
                               className="mt-2.5 space-y-2"
                             >
                               {data.medications.map((medication) => (
@@ -1456,16 +1507,16 @@ export function OnboardingPage() {
               {stage === 6 && (
                 <>
                   <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    Are you taking any supplements?
+                    {t("onboarding.stage6Title")}
                   </h2>
                   <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    These support you and your baby&apos;s growth.
+                    {t("onboarding.stage6Sub")}
                   </p>
 
                   <div className="mt-6 space-y-5">
                     <YesNoQuestion
                       id="takes-supplements"
-                      question="Are you taking any supplements?"
+                      question={t("onboarding.stage6Title")}
                       value={data.takesSupplements}
                       onChange={(value) => update({ takesSupplements: value })}
                       error={errors.supp}
@@ -1475,13 +1526,13 @@ export function OnboardingPage() {
                     {data.takesSupplements === true && (
                       <div>
                         <p className="text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                          Select your supplements
+                          {t("onboarding.selectSupplements")}
                         </p>
                         <div className="mt-2.5 space-y-2">
                           {SUPPLEMENT_CHOICE_OPTIONS.map((option) => (
                             <ChoiceRow
                               key={option}
-                              label={option}
+                              label={getOptionLabel(option)}
                               selected={data.supplementChoices.includes(option)}
                               onToggle={() =>
                                 update({
@@ -1503,14 +1554,11 @@ export function OnboardingPage() {
                   <MicRings />
 
                   <h2 className="mt-8 text-[30px] font-light leading-[1.12] tracking-[-0.03em] text-[#3b3226] dark:text-[#f5ede0]">
-                    Talk in Amharic,
-                    <br />
-                    we listen.
+                    {t("onboarding.stage7Title")}
                   </h2>
 
                   <p className="mx-auto mt-4 max-w-[34ch] text-[15px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    Your daily check-ins are spoken. The microphone lets Mama Health hear your
-                    answers, understand them, and shape your care around them.
+                    {t("onboarding.stage7Sub")}
                   </p>
 
                   <div className="mt-8 w-full">
@@ -1532,7 +1580,7 @@ export function OnboardingPage() {
         </div>
       </div>
 
-      {/* Action button without a rectangular card wrapper */}
+      {/* Action button */}
       <div className="relative z-20 w-full shrink-0 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-2 sm:px-6">
         <div className="mx-auto w-full max-w-[440px]">
           {screen === "complete" ? null : screen === "welcome" ? (
@@ -1541,7 +1589,7 @@ export function OnboardingPage() {
               onClick={startOnboarding}
               className="group flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#3b3226] px-6 py-3.5 text-[15px] font-medium text-[#fbe7b8] shadow-[0_14px_30px_-16px_rgba(60,45,25,0.7)] transition-colors hover:bg-[#4a3f30] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:shadow-[0_16px_34px_-14px_rgba(229,190,121,0.45)] dark:hover:bg-[#f0cf92] dark:focus-visible:outline-[#e5be79]"
             >
-              Start
+              {t("onboarding.start")}
               <ArrowRight
                 size={17}
                 strokeWidth={2}
@@ -1556,7 +1604,7 @@ export function OnboardingPage() {
                 onClick={tryVoiceCheckin}
                 className="group flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#3b3226] px-6 py-3.5 text-[15px] font-medium text-[#fbe7b8] shadow-[0_14px_30px_-16px_rgba(60,45,25,0.7)] transition-colors hover:bg-[#4a3f30] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:shadow-[0_16px_34px_-14px_rgba(229,190,121,0.45)] dark:hover:bg-[#f0cf92] dark:focus-visible:outline-[#e5be79]"
               >
-                Try voice check-in
+                {t("onboarding.tryVoice")}
               </button>
               <div className="flex justify-center">
                 <button
@@ -1564,7 +1612,7 @@ export function OnboardingPage() {
                   onClick={finishOnboarding}
                   className="rounded-full px-4 py-2 text-[13.5px] font-medium text-[#6f6149] underline decoration-[#c9a35d]/60 underline-offset-4 transition-colors hover:text-[#3b3226] dark:text-[#b9a88e] dark:hover:text-[#f5ede0]"
                 >
-                  Skip for now
+                  {t("onboarding.skipForNow")}
                 </button>
               </div>
             </div>
@@ -1574,7 +1622,7 @@ export function OnboardingPage() {
               onClick={handleContinue}
               className="group flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#3b3226] px-6 py-3.5 text-[15px] font-medium text-[#fbe7b8] shadow-[0_14px_30px_-16px_rgba(60,45,25,0.7)] transition-colors hover:bg-[#4a3f30] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:shadow-[0_16px_34px_-14px_rgba(229,190,121,0.45)] dark:hover:bg-[#f0cf92] dark:focus-visible:outline-[#e5be79]"
             >
-              {stage === TOTAL_STEPS ? "Finish set-up" : "Continue"}
+              {stage === TOTAL_STEPS ? t("onboarding.finish") : t("onboarding.continue")}
               <ArrowRight
                 size={17}
                 strokeWidth={2}

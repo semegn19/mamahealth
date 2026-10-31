@@ -5,12 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { LeafMark } from "../components/LeafMark";
-
-const MESSAGES = [
-  "Preparing your space…",
-  "Gathering today's check-in…",
-  "Wrapping everything in calm…",
-];
+import { useTranslation } from "../components/languageStore";
 
 const DURATION_MS = 3200;
 
@@ -20,21 +15,24 @@ const DURATION_MS = 3200;
  * (breathing logo, progress bar, rotating messages) while the app opens.
  */
 export function SplashPage() {
+  const { t } = useTranslation();
   const [messageIndex, setMessageIndex] = useState(0);
   const router = useRouter();
+
+  const messages = [t("splash.msg1"), t("splash.msg2"), t("splash.msg3")];
 
   useEffect(() => {
     router.prefetch("/home");
     // `replace` keeps the splash out of history so Back never loops through it.
     const advance = window.setTimeout(() => router.replace("/home"), DURATION_MS);
     const rotate = window.setInterval(() => {
-      setMessageIndex((current) => (current + 1) % MESSAGES.length);
+      setMessageIndex((current) => (current + 1) % messages.length);
     }, 1100);
     return () => {
       window.clearTimeout(advance);
       window.clearInterval(rotate);
     };
-  }, [router]);
+  }, [router, messages.length]);
 
   return (
     <div className="relative flex min-h-[100dvh] w-full flex-col overflow-hidden bg-[#f3ecdf] text-[#4a3f30] dark:bg-[#15120e] dark:text-[#f0e4ce]">
@@ -64,10 +62,10 @@ export function SplashPage() {
 
         {/* App name */}
         <p className="mt-7 text-[38px] font-medium leading-none tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-          Mama Health
+          {t("common.appName")}
         </p>
         <p className="mt-2.5 text-[13.5px] text-[#6f6149] dark:text-[#b9a88e]">
-          Gentle care for every stage of motherhood
+          {t("common.tagline")}
         </p>
 
         {/* Progress bar */}
@@ -81,10 +79,10 @@ export function SplashPage() {
         {/* Rotating message (visual only; screen readers get a static label) */}
         <p aria-hidden="true" className="mt-4 h-5 text-[13.5px] text-[#85735a] dark:text-[#9c8b72]">
           <span key={messageIndex} className="splash-msg inline-block">
-            {MESSAGES[messageIndex]}
+            {messages[messageIndex]}
           </span>
         </p>
-        <p className="sr-only">Loading Mama Health, please wait.</p>
+        <p className="sr-only">{t("splash.loadingSr")}</p>
 
         <Link
           href="/home"
@@ -92,7 +90,7 @@ export function SplashPage() {
           prefetch={true}
           className="group mt-6 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-medium text-[#8d6a2a] underline decoration-[#c9a35d]/60 underline-offset-4 transition-colors hover:text-[#4a3f30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#e5be79] dark:hover:text-[#f5ede0] dark:focus-visible:outline-[#e5be79]"
         >
-          Continue
+          {t("splash.continue")}
           <ArrowRight
             size={15}
             strokeWidth={2}

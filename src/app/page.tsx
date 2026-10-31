@@ -4,6 +4,7 @@ import { MethodSection } from "@/sections/MethodSection";
 import { Footer } from "@/sections/Footer";
 import { LandingHeader } from "@/landing/LandingHeader";
 import { LandingHeroCTA } from "@/landing/LandingHeroCTA";
+import { LandingHeroHeadline } from "@/landing/LandingHeroHeadline";
 import { JourneyModal } from "@/landing/JourneyModal";
 
 export const metadata: Metadata = {
@@ -41,46 +42,13 @@ export default function Page() {
           {/* Header navigation (Client Component island) */}
           <LandingHeader />
 
-          {/* Headline (Server Component markup) */}
+          {/* Headline */}
           <div className="my-14 lg:my-0 lg:max-w-[58%] xl:max-w-[56%] 2xl:max-w-[54%]">
-            <h1 className="text-[18vw] font-medium leading-[0.82] tracking-[-0.04em] sm:text-[13vw] lg:text-[8.2vw] 2xl:text-[132px]">
-              <span
-                className="rise block text-[#4a3f30] dark:text-[#f5ede0]"
-                style={{ animationDelay: "0.1s" }}
-              >
-                We’re
-              </span>
-              <span
-                className="rise block text-[#c9b489] dark:text-[#c9a35d]"
-                style={{ animationDelay: "0.25s" }}
-              >
-                growing
-              </span>
-              <span className="rise relative inline-block" style={{ animationDelay: "0.4s" }}>
-                <span className="gold-shimmer drop-shadow-[0_2px_20px_rgba(201,160,90,0.35)]">
-                  together
-                </span>
-                <span className="absolute -bottom-2 left-0 h-[5px] w-[62%] rounded-full bg-white/95 dark:bg-[#e5be79]/90" />
-              </span>
-            </h1>
+            <LandingHeroHeadline />
           </div>
 
           {/* Footer row with CTA */}
-          <div className="flex flex-col-reverse gap-8 sm:flex-row sm:items-end sm:justify-between lg:max-w-[58%] xl:max-w-[56%] 2xl:max-w-[54%]">
-            <LandingHeroCTA />
-
-            <p className="max-w-[440px] text-[13.5px] leading-relaxed text-[#ad9f86] sm:text-right dark:text-[#9c8b72]">
-              Mama Health is a{" "}
-              <a
-                href="#"
-                className="text-[#4a3f30] underline decoration-[#c9a35d] underline-offset-2 dark:text-[#f5ede0] dark:decoration-[#e5be79]"
-              >
-                gentle maternal health companion
-              </a>{" "}
-              guiding you through pregnancy, birth and early motherhood with{" "}
-              <span className="text-[#4a3f30] dark:text-[#f5ede0]">care that grows with you.</span>
-            </p>
-          </div>
+          <LandingHeroCTA />
         </div>
       </section>
 

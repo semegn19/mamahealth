@@ -4,26 +4,28 @@ import Link from "next/link";
 import Image from "next/image";
 import { Bell } from "lucide-react";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useTranslation } from "./languageStore";
 import { useProfile } from "../settings/profileStore";
 import { useNotifications } from "../notifications/notificationsData";
-
-function greeting(date: Date) {
-  const h = date.getHours();
-  if (h < 12) return "Good morning!";
-  if (h < 18) return "Good afternoon!";
-  return "Good evening!";
-}
 
 export function HomeTopBar({ now = new Date() }: { now?: Date }) {
   const { profile } = useProfile();
   const { unreadCount } = useNotifications();
+  const { t } = useTranslation();
+
+  const getGreeting = (date: Date) => {
+    const h = date.getHours();
+    if (h < 12) return t("greetings.morning");
+    if (h < 18) return t("greetings.afternoon");
+    return t("greetings.evening");
+  };
 
   return (
     <div className="flex items-center justify-between">
       <Link
         href="/settings"
         prefetch={true}
-        aria-label="Open settings"
+        aria-label={t("nav.settings")}
         className="flex items-center gap-3 rounded-full text-left transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
       >
         <Image
@@ -35,7 +37,7 @@ export function HomeTopBar({ now = new Date() }: { now?: Date }) {
           className="h-12 w-12 rounded-full object-cover ring-2 ring-white dark:ring-[#e5be79]/35"
         />
         <div>
-          <p className="text-[13px] text-[#85735a] dark:text-[#9c8b72]">{greeting(now)}</p>
+          <p className="text-[13px] text-[#85735a] dark:text-[#9c8b72]">{getGreeting(now)}</p>
           <p className="text-[17px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
             {profile.name}
           </p>
@@ -46,7 +48,7 @@ export function HomeTopBar({ now = new Date() }: { now?: Date }) {
         <Link
           href="/notifications"
           prefetch={true}
-          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+          aria-label={`${t("nav.notifications")}${unreadCount > 0 ? `, ${unreadCount} ${t("notifications.unreadTab")}` : ""}`}
           className="home-icon-solid relative flex h-12 w-12 items-center justify-center rounded-full text-[#4a3f30] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#f0e4ce] dark:focus-visible:outline-[#e5be79]"
         >
           <Bell size={19} strokeWidth={1.8} />

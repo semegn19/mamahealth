@@ -21,13 +21,14 @@ import {
 import { BottomNav } from "../components/BottomNav";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { useProfile, type Supplement } from "./profileStore";
+import { useTranslation } from "../components/languageStore";
 import { useTheme, type Theme } from "../theme/themeStore";
 import { useRouter } from "next/navigation";
 
-function formatDate(value: string) {
-  if (!value) return "Not set";
+function formatDate(value: string, isAmharic: boolean, notSetLabel: string) {
+  if (!value) return notSetLabel;
   const [y, m, d] = value.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+  return new Date(y, m - 1, d).toLocaleDateString(isAmharic ? "am-ET" : "en-US", {
     weekday: "short",
     day: "numeric",
     month: "long",
@@ -35,12 +36,12 @@ function formatDate(value: string) {
   });
 }
 
-function formatTime(value: string) {
-  if (!value) return "No reminder";
+function formatTime(value: string, isAmharic: boolean, noReminderLabel: string) {
+  if (!value) return noReminderLabel;
   const [h, m] = value.split(":").map(Number);
   const date = new Date();
   date.setHours(h, m, 0, 0);
-  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return date.toLocaleTimeString(isAmharic ? "am-ET" : "en-US", { hour: "numeric", minute: "2-digit" });
 }
 
 function Card({
@@ -78,6 +79,7 @@ function AppearanceSelector({
   theme: Theme;
   onSelect: (next: Theme, event: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
+  const { t } = useTranslation();
   const options: {
     value: Theme;
     label: string;
@@ -85,18 +87,18 @@ function AppearanceSelector({
   }[] = [
     {
       value: "light",
-      label: "Light",
-      subtitle: "Sunlit cream",
+      label: t("settings.lightTheme"),
+      subtitle: t("settings.lightThemeSub"),
     },
     {
       value: "dark",
-      label: "Dark",
-      subtitle: "Candlelit calm",
+      label: t("settings.darkTheme"),
+      subtitle: t("settings.darkThemeSub"),
     },
   ];
 
   return (
-    <div role="radiogroup" aria-label="Appearance theme" className="grid grid-cols-2 gap-3">
+    <div role="radiogroup" aria-label={t("settings.appearance")} className="grid grid-cols-2 gap-3">
       {options.map((opt) => {
         const active = theme === opt.value;
         const isDarkPreview = opt.value === "dark";
@@ -213,6 +215,7 @@ function NameEditor({
   onClose: () => void;
   onSave: (name: string) => void;
 }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(initialName);
   const [error, setError] = useState("");
 
@@ -229,7 +232,7 @@ function NameEditor({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!trimmed) return setError("Enter your name.");
+    if (!trimmed) return setError(t("settings.enterNameError"));
     if (!changed) {
       onClose();
       return;
@@ -252,19 +255,19 @@ function NameEditor({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8d6a2a] dark:text-[#dfb870]">
-              Profile
+              {t("settings.profile")}
             </p>
             <h2
               id="name-editor-title"
               className="mt-1 text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
             >
-              Edit name
+              {t("settings.editName")}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="home-icon-solid flex h-10 w-10 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce]"
           >
             <X size={19} strokeWidth={1.8} />
@@ -277,7 +280,7 @@ function NameEditor({
               htmlFor="profile-name"
               className="block text-[13px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]"
             >
-              Your name
+              {t("settings.yourName")}
             </label>
             <input
               id="profile-name"
@@ -291,11 +294,11 @@ function NameEditor({
                 setDraft(event.target.value);
                 setError("");
               }}
-              placeholder="e.g. Amara Bennett"
+              placeholder={t("settings.namePlaceholder")}
               className="mt-2 w-full rounded-2xl border border-[#d8c6a4] bg-white px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#a87a3d] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
             />
             <p className="mt-2 text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
-              This is how Mama Health greets you across the app.
+              {t("settings.nameHelp")}
             </p>
           </div>
 
@@ -311,7 +314,7 @@ function NameEditor({
               onClick={onClose}
               className="rounded-full px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-white/60 dark:text-[#c7b69c] dark:hover:bg-white/8"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -319,7 +322,7 @@ function NameEditor({
               className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#4a3f30] px-5 py-3 text-[14px] font-medium text-[#fffaf0] transition enabled:hover:bg-[#655039] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#e5be79] dark:text-[#231b12] dark:enabled:hover:bg-[#f0cf92]"
             >
               <Check size={17} strokeWidth={2} aria-hidden="true" />
-              Save name
+              {t("settings.saveName")}
             </button>
           </div>
         </form>
@@ -343,6 +346,7 @@ function SupplementEditor({
   onSave: (supplement: Supplement) => void;
   onDelete: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState(initial?.name ?? "");
   const [remind, setRemind] = useState(Boolean(initial ? initial.reminderTime : true));
   const [time, setTime] = useState(initial?.reminderTime || "08:00");
@@ -359,8 +363,8 @@ function SupplementEditor({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!name.trim()) return setError("Give the supplement a name.");
-    if (remind && !time) return setError("Choose a reminder time.");
+    if (!name.trim()) return setError(t("settings.nameRequiredError"));
+    if (remind && !time) return setError(t("settings.timeRequiredError"));
     onSave({
       id: initial?.id || crypto.randomUUID(),
       name: name.trim(),
@@ -383,19 +387,19 @@ function SupplementEditor({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8d6a2a] dark:text-[#dfb870]">
-              Supplement
+              {t("settings.supplements")}
             </p>
             <h2
               id="supplement-editor-title"
               className="mt-1 text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
             >
-              {initial ? "Edit supplement" : "Add a supplement"}
+              {initial ? t("settings.editSupplement") : t("settings.addSupplement")}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             className="home-icon-solid flex h-10 w-10 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce]"
           >
             <X size={19} strokeWidth={1.8} />
@@ -408,7 +412,7 @@ function SupplementEditor({
               htmlFor="supp-name"
               className="block text-[13px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]"
             >
-              Name
+              {t("settings.supplementName")}
             </label>
             <input
               id="supp-name"
@@ -421,7 +425,7 @@ function SupplementEditor({
                 setName(event.target.value);
                 setError("");
               }}
-              placeholder="e.g. Vitamin D"
+              placeholder={t("settings.supplementPlaceholder")}
               className="mt-2 w-full rounded-2xl border border-[#d8c6a4] bg-white px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#a87a3d] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
             />
           </div>
@@ -438,7 +442,7 @@ function SupplementEditor({
                 className="h-4 w-4 accent-[#b98a3e] dark:accent-[#e5be79]"
               />
               <Bell size={17} strokeWidth={1.8} aria-hidden="true" />
-              Daily reminder
+              {t("settings.dailyReminder")}
             </label>
             {remind && (
               <div className="mt-3">
@@ -446,7 +450,7 @@ function SupplementEditor({
                   htmlFor="supp-time"
                   className="block text-[12px] text-[#6f6149] dark:text-[#b9a88e]"
                 >
-                  Reminder time
+                  {t("settings.reminderTime")}
                 </label>
                 <input
                   id="supp-time"
@@ -460,7 +464,7 @@ function SupplementEditor({
                   className="mt-2 w-full min-w-0 rounded-xl border border-[#d8c6a4] bg-white px-3 py-3 text-[14px] text-[#3b3226] outline-none focus:border-[#a87a3d] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:focus:border-[#e5be79]"
                 />
                 <p className="mt-2 text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
-                  We'll remind you to take it at this time each day while Mama Health is open.
+                  {t("settings.reminderHelp")}
                 </p>
               </div>
             )}
@@ -480,7 +484,7 @@ function SupplementEditor({
                 className="flex items-center justify-center gap-1 rounded-full border border-[#e8a18f] px-4 py-3 text-[13px] font-medium text-[#9c3a29] transition hover:bg-[#f6e0d8] dark:border-[#c65a45]/60 dark:text-[#f08b75] dark:hover:bg-[#c65a45]/18"
               >
                 <Trash2 size={16} strokeWidth={1.8} aria-hidden="true" />
-                {confirmDelete ? "Confirm delete" : "Delete"}
+                {confirmDelete ? t("settings.confirmDelete") : t("common.delete")}
               </button>
             )}
             <button
@@ -488,7 +492,7 @@ function SupplementEditor({
               className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#4a3f30] px-5 py-3 text-[14px] font-medium text-[#fffaf0] transition hover:bg-[#655039] active:scale-[0.98] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
             >
               <Check size={17} strokeWidth={2} aria-hidden="true" />
-              {initial ? "Save changes" : "Add supplement"}
+              {initial ? t("settings.saveChanges") : t("settings.addSupplement")}
             </button>
           </div>
         </form>
@@ -506,7 +510,7 @@ function ConfirmDialog({
   body,
   confirmLabel,
   tone = "danger",
-  onCancelLabel = "Cancel",
+  onCancelLabel,
   onCancel,
   onConfirm,
 }: {
@@ -518,6 +522,9 @@ function ConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useTranslation();
+  const cancelText = onCancelLabel ?? t("common.cancel");
+
   return (
     <div
       role="dialog"
@@ -545,7 +552,7 @@ function ConfirmDialog({
             onClick={onCancel}
             className="flex-1 rounded-full border border-[#d8c6a4] px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-white/60 dark:border-[#4a3c2c] dark:text-[#c7b69c] dark:hover:bg-white/8"
           >
-            {onCancelLabel}
+            {cancelText}
           </button>
           <button
             type="button"
@@ -570,6 +577,7 @@ function ConfirmDialog({
 
 export function SettingsPage() {
   const router = useRouter();
+  const { t, isAmharic } = useTranslation();
   const { profile, update, resetAll } = useProfile();
   const { theme, setTheme } = useTheme();
   const [editingName, setEditingName] = useState(false);
@@ -600,7 +608,7 @@ export function SettingsPage() {
   const saveName = (name: string) => {
     update({ name });
     setEditingName(false);
-    setMessage("Name updated");
+    setMessage(t("settings.nameUpdated"));
   };
 
   const saveSupplement = (supplement: Supplement) => {
@@ -611,13 +619,13 @@ export function SettingsPage() {
         : [...profile.supplements, supplement],
     });
     setSupplementEditor(null);
-    setMessage(exists ? "Supplement updated" : "Supplement added");
+    setMessage(exists ? t("settings.supplementUpdated") : t("settings.supplementAdded"));
   };
 
   const deleteSupplement = (id: string) => {
     update({ supplements: profile.supplements.filter((s) => s.id !== id) });
     setSupplementEditor(null);
-    setMessage("Supplement removed");
+    setMessage(t("settings.supplementRemoved"));
   };
 
   return (
@@ -633,20 +641,20 @@ export function SettingsPage() {
           <Link
             href="/home"
             prefetch={true}
-            aria-label="Back to home"
+            aria-label={t("common.back")}
             className="home-icon-solid flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
           >
             <ChevronLeft size={20} strokeWidth={1.8} />
           </Link>
           <div className="min-w-0 flex-1">
             <h1 className="text-[30px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
-              Settings
+              {t("settings.title")}
             </h1>
           </div>
           <LanguageSwitcher />
         </header>
 
-        <section aria-label="Profile details" className="mt-7 flex items-start gap-4">
+        <section aria-label={t("settings.profile")} className="mt-7 flex items-start gap-4">
           <Image
             src="/images/avatar.jpg"
             alt={profile.name}
@@ -663,7 +671,7 @@ export function SettingsPage() {
                 ref={nameEditButtonRef}
                 type="button"
                 onClick={() => setEditingName(true)}
-                aria-label="Edit name"
+                aria-label={t("settings.editName")}
                 aria-haspopup="dialog"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#8d6a2a] transition-colors hover:bg-[#fbe7b8]/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#dfb870] dark:hover:bg-[#e5be79]/15 dark:focus-visible:outline-[#e5be79]"
               >
@@ -674,7 +682,7 @@ export function SettingsPage() {
               {profile.email}
             </p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
-              Second trimester · Week 24
+              {t("settings.weekStage")}
             </p>
           </div>
         </section>
@@ -682,11 +690,11 @@ export function SettingsPage() {
         <div className="mt-6 space-y-4">
           {/* Appearance / Theme changer */}
           <Card
-            title="Appearance"
+            title={t("settings.appearance")}
             description={
               theme === "dark"
-                ? "Quiet espresso and warm amber, gentle on rested eyes."
-                : "Warm sunlit cream and soft gold for daytime clarity."
+                ? t("settings.appearanceDarkDesc")
+                : t("settings.appearanceLightDesc")
             }
           >
             <AppearanceSelector
@@ -696,7 +704,7 @@ export function SettingsPage() {
           </Card>
 
           {/* Next ANC contact */}
-          <Card title="Next ANC contact" description="Your upcoming antenatal appointment.">
+          <Card title={t("settings.nextAnc")} description={t("settings.ancDescription")}>
             {editingAnc ? (
               <form
                 className="flex flex-col gap-3 sm:flex-row sm:items-center"
@@ -704,11 +712,11 @@ export function SettingsPage() {
                   event.preventDefault();
                   update({ nextAncDate: ancDraft });
                   setEditingAnc(false);
-                  setMessage("Appointment date updated");
+                  setMessage(t("settings.appointmentUpdated"));
                 }}
               >
                 <label htmlFor="anc-date" className="sr-only">
-                  Next ANC date
+                  {t("settings.nextAnc")}
                 </label>
                 <input
                   id="anc-date"
@@ -723,7 +731,7 @@ export function SettingsPage() {
                     type="submit"
                     className="flex-1 rounded-full bg-[#4a3f30] px-5 py-3 text-[14px] font-medium text-[#fffaf0] transition hover:bg-[#655039] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
                   >
-                    Save
+                    {t("common.save")}
                   </button>
                   <button
                     type="button"
@@ -733,7 +741,7 @@ export function SettingsPage() {
                     }}
                     className="rounded-full px-3 py-3 text-[14px] text-[#6f6149] dark:text-[#c7b69c]"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                 </div>
               </form>
@@ -744,7 +752,7 @@ export function SettingsPage() {
                     <Stethoscope size={18} strokeWidth={1.8} aria-hidden="true" />
                   </span>
                   <span className="text-[15px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                    {formatDate(profile.nextAncDate)}
+                    {formatDate(profile.nextAncDate, isAmharic, t("settings.notSet"))}
                   </span>
                 </span>
                 <button
@@ -755,14 +763,14 @@ export function SettingsPage() {
                   }}
                   className="flex items-center gap-1.5 rounded-full border border-[#d8c6a4] px-4 py-2 text-[13px] font-medium text-[#6f5a35] transition hover:bg-white/60 dark:border-[#4a3c2c] dark:text-[#dfb870] dark:hover:bg-white/8"
                 >
-                  <Pencil size={14} strokeWidth={1.8} aria-hidden="true" /> Edit
+                  <Pencil size={14} strokeWidth={1.8} aria-hidden="true" /> {t("common.edit")}
                 </button>
               </div>
             )}
           </Card>
 
           {/* Supplements */}
-          <Card title="Supplements" description="Add what you take and set a daily reminder for each.">
+          <Card title={t("settings.supplements")} description={t("settings.supplementsDesc")}>
             {profile.supplements.length > 0 ? (
               <ul className="divide-y divide-[#b98a3e]/15 dark:divide-[#e5be79]/12">
                 {profile.supplements.map((supplement) => (
@@ -770,7 +778,7 @@ export function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setSupplementEditor({ key: supplement.id, item: supplement })}
-                      aria-label={`Edit ${supplement.name}`}
+                      aria-label={`${t("common.edit")} ${supplement.name}`}
                       aria-haspopup="dialog"
                       className="group flex min-h-[64px] w-full items-center gap-3 rounded-xl px-1.5 py-3 text-left transition-colors hover:bg-white/25 dark:hover:bg-white/6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
                     >
@@ -784,11 +792,13 @@ export function SettingsPage() {
                         <span className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[#6f6149] dark:text-[#b9a88e]">
                           {supplement.reminderTime ? (
                             <>
-                              <Bell size={12} aria-hidden="true" /> Daily at{" "}
-                              {formatTime(supplement.reminderTime)}
+                              <Bell size={12} aria-hidden="true" />{" "}
+                              {t("settings.dailyAt", {
+                                time: formatTime(supplement.reminderTime, isAmharic, t("settings.noReminder")),
+                              })}
                             </>
                           ) : (
-                            <>No reminder set</>
+                            <>{t("settings.noReminderSet")}</>
                           )}
                         </span>
                       </span>
@@ -803,7 +813,7 @@ export function SettingsPage() {
               </ul>
             ) : (
               <p className="py-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                No supplements yet. Add the ones you take.
+                {t("settings.noSupplementsYet")}
               </p>
             )}
 
@@ -813,12 +823,12 @@ export function SettingsPage() {
               aria-haspopup="dialog"
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-[#c9a35d]/45 bg-[#fbe7b8]/55 px-4 py-3 text-[14px] font-medium text-[#6f5a35] transition hover:bg-[#fbe7b8]/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:border-[#e5be79]/35 dark:bg-[#e5be79]/14 dark:text-[#e5be79] dark:hover:bg-[#e5be79]/24 dark:focus-visible:outline-[#e5be79]"
             >
-              <Plus size={18} strokeWidth={1.9} aria-hidden="true" /> Add supplement
+              <Plus size={18} strokeWidth={1.9} aria-hidden="true" /> {t("settings.addSupplement")}
             </button>
           </Card>
 
           {/* Account actions */}
-          <Card title="Account">
+          <Card title={t("settings.account")}>
             <div className="flex flex-col gap-2">
               <button
                 type="button"
@@ -830,10 +840,10 @@ export function SettingsPage() {
                 </span>
                 <span>
                   <span className="block text-[15px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                    Log out
+                    {t("settings.signOut")}
                   </span>
                   <span className="block text-[12.5px] text-[#85735a] dark:text-[#9c8b72]">
-                    Sign out of your account on this device.
+                    {t("settings.signOutDesc")}
                   </span>
                 </span>
               </button>
@@ -848,10 +858,10 @@ export function SettingsPage() {
                 </span>
                 <span>
                   <span className="block text-[15px] font-medium text-[#9c3a29] dark:text-[#f08b75]">
-                    Delete account
+                    {t("settings.deleteAccount")}
                   </span>
                   <span className="block text-[12.5px] text-[#a76a56] dark:text-[#c98b7c]">
-                    Permanently remove your data. This cannot be undone.
+                    {t("settings.deleteDesc")}
                   </span>
                 </span>
               </button>
@@ -883,9 +893,9 @@ export function SettingsPage() {
 
       {confirm === "logout" && (
         <ConfirmDialog
-          title="Log out?"
-          body="You'll need to sign in again to see your check-ins and reports."
-          confirmLabel="Log out"
+          title={t("settings.logoutTitle")}
+          body={t("settings.logoutBody")}
+          confirmLabel={t("settings.logoutConfirm")}
           tone="neutral"
           onCancel={() => setConfirm(null)}
           onConfirm={() => {
@@ -897,9 +907,9 @@ export function SettingsPage() {
 
       {confirm === "delete" && (
         <ConfirmDialog
-          title="Delete your account?"
-          body="This permanently removes your profile, supplements, and saved settings. This cannot be undone."
-          confirmLabel="Delete account"
+          title={t("settings.deleteTitle")}
+          body={t("settings.deleteBody")}
+          confirmLabel={t("settings.deleteConfirm")}
           tone="danger"
           onCancel={() => setConfirm(null)}
           onConfirm={() => {

@@ -9,7 +9,8 @@ import { FoodScoreDonut } from "./FoodScoreDonut";
 import { ReportShareButton } from "./ReportShareButton";
 import { SupplementAdherence } from "./SupplementAdherence";
 import { useCountUp } from "./useInViewOnce";
-import { getReportArchiveItem } from "./reportCatalog";
+import { getReportArchiveItem, getLocalizedReport } from "./reportCatalog";
+import { useTranslation } from "../components/languageStore";
 import {
   AVG_FOOD_GROUPS,
   DAYS_WITH_SYMPTOMS,
@@ -28,7 +29,9 @@ const topSymptoms = SYMPTOM_TOTALS.slice(0, 4);
 const leading = topSymptoms[0];
 
 export function AncReport({ reportId }: { reportId?: string }) {
-  const report = getReportArchiveItem(reportId);
+  const { t, isAmharic } = useTranslation();
+  const rawReport = getReportArchiveItem(reportId);
+  const report = useMemo(() => getLocalizedReport(rawReport, isAmharic), [rawReport, isAmharic]);
   const [selectedDay, setSelectedDay] = useState<DayRecord | null>(null);
   const symptomDetailsId = useId();
 
@@ -66,7 +69,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
             <Link
               href="/reports"
               prefetch={true}
-              aria-label="Back to reports"
+              aria-label={t("reports.backToReports")}
               className="home-icon-solid flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
             >
               <ChevronLeft size={20} strokeWidth={1.8} />
@@ -78,10 +81,10 @@ export function AncReport({ reportId }: { reportId?: string }) {
           </div>
           <div className="mt-5">
             <h1 className="text-[30px] font-light leading-none tracking-[-0.03em] text-[#3b3226] dark:text-[#f5ede0]">
-              ANC report
+              {t("reports.title")}
             </h1>
             <p className="mt-2 text-[14.5px] text-[#6f6149] dark:text-[#c7b69c]">
-              For your {report.appointment}
+              {t("reports.forAppointment", { appointment: report.appointment })}
             </p>
             <p className="mt-0.5 text-[13px] text-[#9b8a6f] dark:text-[#9c8b72]">{report.range}</p>
           </div>
@@ -101,12 +104,10 @@ export function AncReport({ reportId }: { reportId?: string }) {
             />
             <div className="min-w-0">
               <p className="text-[14px] font-semibold tracking-tight text-[#7d2b1c] dark:text-[#fde8e1]">
-                {dangerSigns.length} danger sign{dangerSigns.length > 1 ? "s" : ""} recorded this
-                period
+                {t("reports.dangerBanner", { count: dangerSigns.length })}
               </p>
               <p className="mt-1 text-[12.5px] leading-relaxed text-[#8a3b2c] dark:text-[#eab0a2]">
-                These need clinical review before your next visit. If any continue or get worse,
-                contact your care team right away.
+                {t("reports.dangerAdvice")}
               </p>
             </div>
           </div>
@@ -114,7 +115,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
 
         {/* Summary card */}
         <section
-          aria-label="Check-in summary"
+          aria-label={t("reports.checkinSummary")}
           className={`report-reveal relative mt-7 overflow-hidden rounded-[28px] p-5 ${
             dangerSigns.length ? "report-danger-card" : "home-glass-gold"
           }`}
@@ -130,7 +131,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
               }`}
             >
               <FileText size={13} strokeWidth={1.9} />
-              Check-in summary
+              {t("reports.checkinSummary")}
             </span>
             <div
               className={`mt-3 grid gap-4 ${
@@ -149,7 +150,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
                       : "text-[#6f5a35] dark:text-[#d8c7ab]"
                   }`}
                 >
-                  daily check-ins completed
+                  {t("reports.checkinsCompleted")}
                 </p>
               </div>
               <div>
@@ -164,7 +165,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
                       : "text-[#6f5a35] dark:text-[#d8c7ab]"
                   }`}
                 >
-                  {report.daysMissed === 1 ? "day missed" : "days missed"}
+                  {report.daysMissed === 1 ? t("reports.dayMissed") : t("reports.daysMissed")}
                 </p>
               </div>
               {dangerSigns.length > 0 && (
@@ -177,7 +178,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
                     <span aria-hidden="true">{animatedDangerSigns}</span>
                   </p>
                   <p className="mt-1.5 text-[13.5px] font-medium text-[#9c3a29] dark:text-[#f08b75]">
-                    {dangerSigns.length === 1 ? "danger sign" : "danger signs"}
+                    {dangerSigns.length === 1 ? t("reports.dangerSign") : t("reports.dangerSigns")}
                   </p>
                 </div>
               )}
@@ -189,15 +190,22 @@ export function AncReport({ reportId }: { reportId?: string }) {
                   : "text-[#6f5a35] dark:text-[#d8c7ab]"
               }`}
             >
-              {TOTAL_DAYS - report.daysMissed} of {TOTAL_DAYS} days logged · {report.clinician}
+              {t("reports.totalDaysLogged", {
+                total: TOTAL_DAYS,
+                taken: TOTAL_DAYS - report.daysMissed,
+                clinician: report.clinician,
+              })}
             </p>
           </div>
         </section>
 
         {/* Symptoms */}
         <Section
-          title="Symptoms"
-          note={`Logged on ${DAYS_WITH_SYMPTOMS} of ${RECORDED_DAYS} recorded days`}
+          title={t("reports.symptomSectionTitle")}
+          note={t("reports.symptomLoggedNote", {
+            logged: DAYS_WITH_SYMPTOMS,
+            total: RECORDED_DAYS,
+          })}
           revealDelay={150}
         >
           <SeverityCalendar
@@ -210,7 +218,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
             {dangerSigns.length > 0 && (
               <span className="flex items-center gap-1.5 font-medium text-[#9c3a29] dark:text-[#f08b75]">
                 <span aria-hidden="true" className="h-3 w-3 rounded-[4px] bg-[#c65a45]" />
-                Danger sign
+                {t("reports.dangerSignLabel")}
               </span>
             )}
             {Object.values(SEVERITY_LEVELS).map((level) => (
@@ -220,7 +228,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
                   className="h-3 w-3 rounded-[4px]"
                   style={{ backgroundColor: level.color }}
                 />
-                {level.label}
+                {isAmharic ? level.label_am || level.label : level.label}
               </span>
             ))}
             <span className="flex items-center gap-1.5">
@@ -228,14 +236,14 @@ export function AncReport({ reportId }: { reportId?: string }) {
                 aria-hidden="true"
                 className="h-3 w-3 rounded-[4px] border border-[#e2d3b4] bg-[#faf5eb] dark:border-[#3d3123] dark:bg-[#19140f]"
               />{" "}
-              No symptoms
+              {t("reports.noSymptoms")}
             </span>
             <span className="flex items-center gap-1.5">
               <span
                 aria-hidden="true"
                 className="h-3 w-3 rounded-[4px] border border-dashed border-[#b5a07c] dark:border-[#66543f]"
               />{" "}
-              No check-in
+              {t("reports.noCheckin")}
             </span>
           </div>
 
@@ -250,7 +258,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
             {selectedDay ? (
               <div key={selectedDay.day} className="motion-safe:animate-[rise_0.25s_ease-out_both]">
                 <h3 className="text-[15px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                  {selectedDay.date.toLocaleDateString("en-GB", {
+                  {selectedDay.date.toLocaleDateString(isAmharic ? "am-ET" : "en-GB", {
                     day: "numeric",
                     month: "long",
                     year: "numeric",
@@ -259,12 +267,12 @@ export function AncReport({ reportId }: { reportId?: string }) {
                 {selectedDangerSigns.length > 0 && (
                   <div
                     role="region"
-                    aria-label="Danger signs this day"
+                    aria-label={t("reports.dangerSignsThisDay")}
                     className="mt-3 rounded-[16px] border border-[#c65a45]/35 bg-[#f6e0d8]/65 p-3.5 dark:border-[#d9715b]/45 dark:bg-[#3f1913]/75"
                   >
                     <h4 className="flex items-center gap-2 text-[13px] font-semibold text-[#7d2b1c] dark:text-[#fde8e1]">
                       <AlertTriangle size={15} strokeWidth={2.2} aria-hidden="true" />
-                      Danger signs this day
+                      {t("reports.dangerSignsThisDay")}
                     </h4>
                     <ul className="mt-2.5 space-y-2.5">
                       {selectedDangerSigns.map((sign) => (
@@ -282,28 +290,29 @@ export function AncReport({ reportId }: { reportId?: string }) {
                 )}
                 {!selectedDay.recorded ? (
                   <p className="mt-2 text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    No check-in recorded for this day.
+                    {t("reports.noCheckinRecorded")}
                   </p>
                 ) : selectedDay.symptoms.length === 0 ? (
                   <p className="mt-2 text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
                     {selectedDangerSigns.length > 0
-                      ? "No other symptoms recorded in this day's check-in."
-                      : "No symptoms recorded in this day's check-in."}
+                      ? t("reports.noOtherSymptomsRecorded")
+                      : t("reports.noSymptomsRecorded")}
                   </p>
                 ) : (
                   <div className={selectedDangerSigns.length > 0 ? "mt-4" : "mt-3"}>
                     {selectedDangerSigns.length > 0 && (
                       <h4 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8d6a2a] dark:text-[#dfb870]">
-                        Other symptoms
+                        {t("reports.otherSymptoms")}
                       </h4>
                     )}
                     <dl className={`space-y-2.5 ${selectedDangerSigns.length > 0 ? "mt-2.5" : ""}`}>
                       {selectedDay.symptoms.map((symptom) => {
                         const level = SEVERITY_LEVELS[symptom.severity];
+                        const symptomLocalized = t(`reports.symptomsMap.${symptom.name}`) || symptom.name;
                         return (
                           <div key={symptom.name} className="flex items-center justify-between gap-4">
                             <dt className="text-[14px] text-[#4a3f30] dark:text-[#f0e4ce]">
-                              {symptom.name}
+                              {symptomLocalized}
                             </dt>
                             <dd className="flex items-center gap-2 text-[12px] font-medium text-[#6f6149] dark:text-[#c7b69c]">
                               <span
@@ -311,7 +320,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
                                 className="h-2 w-2 shrink-0 rounded-full"
                                 style={{ backgroundColor: level.color }}
                               />
-                              {level.label}
+                              {isAmharic ? level.label_am || level.label : level.label}
                             </dd>
                           </div>
                         );
@@ -322,7 +331,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
               </div>
             ) : (
               <p className="text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                Tap a day to see the symptoms and severity recorded.
+                {t("reports.tapDayForSymptoms")}
               </p>
             )}
           </div>
@@ -337,10 +346,10 @@ export function AncReport({ reportId }: { reportId?: string }) {
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#b74835] text-[#fff7f2] shadow-[0_3px_9px_rgba(156,58,41,0.22)]">
                     <AlertTriangle size={18} strokeWidth={2.2} aria-hidden="true" />
                   </span>
-                  Danger signs
+                  {t("reports.dangerSigns")}
                 </h3>
                 <span className="shrink-0 rounded-full bg-[#7d2b1c] px-3 py-1.5 text-[12px] font-semibold tracking-tight text-[#fff7f2] dark:bg-[#c65a45]">
-                  {dangerSigns.length} total · {dangerDays.size} days
+                  {t("reports.daysCount", { count: dangerSigns.length, days: dangerDays.size })}
                 </span>
               </div>
               <ul className="space-y-3">
@@ -359,22 +368,21 @@ export function AncReport({ reportId }: { reportId?: string }) {
                         </p>
                       </div>
                       <span className="shrink-0 rounded-full border border-[#e8a18f] bg-white/70 px-3 py-1.5 text-[12px] font-semibold text-[#7d2b1c] dark:border-[#d9715b]/45 dark:bg-[#3f1913] dark:text-[#fde8e1]">
-                        Sept {sign.day}
+                        {t("reports.septDay", { day: sign.day })}
                       </span>
                     </div>
                   </li>
                 ))}
               </ul>
               <p className="mt-4 text-[14px] leading-[1.65] text-[#8d3d2b] dark:text-[#eab0a2]">
-                If any of these happen again, contact your midwife or go to your nearest facility
-                right away — don&apos;t wait for your next appointment.
+                {t("reports.dangerWarningNote")}
               </p>
             </section>
           )}
 
           <div className="mt-5 border-t border-[#e2d3b4] pt-4 dark:border-[#3d3123]">
             <h3 className="text-[19px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-              Most frequent
+              {t("reports.mostFrequentTitle")}
             </h3>
             <div className="mt-3">
               <SymptomBars rows={topSymptoms} />
@@ -384,8 +392,8 @@ export function AncReport({ reportId }: { reportId?: string }) {
 
         {/* Nutrition */}
         <Section
-          title="Food groups"
-          note={`${AVG_FOOD_GROUPS} of 5 groups on an average day`}
+          title={t("reports.foodGroupsTitle")}
+          note={t("reports.foodScoreNote", { avg: AVG_FOOD_GROUPS })}
           revealDelay={230}
         >
           <FoodScoreDonut
@@ -394,16 +402,16 @@ export function AncReport({ reportId }: { reportId?: string }) {
           />
 
           <p className="mt-4 text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-            All five food groups were eaten on{" "}
-            <span className="font-semibold text-[#3b3226] dark:text-[#f5ede0]">
-              {FOOD_COVERAGE_DAYS} days
-            </span>{" "}
-            this month.
+            {t("reports.allFiveEaten", { days: FOOD_COVERAGE_DAYS })}
           </p>
         </Section>
 
         {/* Supplements */}
-        <Section title="Supplements" note="Days taken this month" revealDelay={310}>
+        <Section
+          title={t("reports.supplementAdherence")}
+          note={t("reports.daysTakenMonth")}
+          revealDelay={310}
+        >
           <SupplementAdherence supplements={SUPPLEMENT_REPORTS} />
         </Section>
 
@@ -423,7 +431,7 @@ export function AncReport({ reportId }: { reportId?: string }) {
                 : "text-[#3b3226] dark:text-[#f5ede0]"
             }`}
           >
-            Summary
+            {t("reports.clinicianSummaryTitle")}
           </h2>
           <p
             className={`mt-3 text-[14.5px] leading-[1.7] ${
@@ -432,16 +440,19 @@ export function AncReport({ reportId }: { reportId?: string }) {
                 : "text-[#4a3f30] dark:text-[#dfcfb6]"
             }`}
           >
-            Over this reporting period, {leading.name.toLowerCase()} was the most frequently
-            reported symptom ({leading.count} days, averaging {leading.avg}/3 in severity) and eased
-            noticeably after the second week. Diet widened from an average of 3 groups early in the
-            month to all five on {FOOD_COVERAGE_DAYS} days.{" "}
-            {SUPPLEMENT_REPORTS.map((supplement) =>
-              supplement.percent === null
-                ? `No ${supplement.name.toLowerCase()} entries were logged.`
-                : `${supplement.name} was marked taken on ${supplement.percent}% of its logged days.`,
-            ).join(" ")}{" "}
-            Review these entries together at your {report.appointment}.
+            {isAmharic ? (
+              `በዚህ የሪፖርት ጊዜ ውስጥ፣ ${t(`reports.symptomsMap.${leading.name}`) || leading.name} በብዛት ሪፖርት የተደረገ ምልክት ነበር (${leading.count} ቀናት፣ በአማካይ ${leading.avg}/3 ክብደት) እና ከሁለተኛው ሳምንት በኋላ በግልጽ ቀንሷል። የተመገቡት ምግብ በወሩ መጀመሪያ ከአማካይ 3 የምግብ አይነቶች በ${FOOD_COVERAGE_DAYS} ቀናት ወደ ሁሉም አምስት የምግብ ቡድኖች አድጓል። ${SUPPLEMENT_REPORTS.map((supplement) =>
+                supplement.percent === null
+                  ? `ምንም የ${t(`reports.supplementsMap.${supplement.name}`) || supplement.name} ምዝገባ አልተደረገም።`
+                  : `${t(`reports.supplementsMap.${supplement.name}`) || supplement.name} በተመዘገቡት ቀናት ${supplement.percent}% ተወስዷል።`,
+              ).join(" ")} እነዚህን መረጃዎች በ${report.appointment} ቀጠሮዎ ወቅት ከጤና ባለሙያዎ ጋር ይገምግሙ።`
+            ) : (
+              `Over this reporting period, ${leading.name.toLowerCase()} was the most frequently reported symptom (${leading.count} days, averaging ${leading.avg}/3 in severity) and eased noticeably after the second week. Diet widened from an average of 3 groups early in the month to all five on ${FOOD_COVERAGE_DAYS} days. ${SUPPLEMENT_REPORTS.map((supplement) =>
+                supplement.percent === null
+                  ? `No ${supplement.name.toLowerCase()} entries were logged.`
+                  : `${supplement.name} was marked taken on ${supplement.percent}% of its logged days.`,
+              ).join(" ")} Review these entries together at your ${report.appointment}.`
+            )}
           </p>
           {dangerSigns.length > 0 && (
             <p
@@ -455,18 +466,18 @@ export function AncReport({ reportId }: { reportId?: string }) {
                 aria-hidden="true"
               />
               <span>
-                <span className="font-semibold">{dangerSigns.length} danger signs</span> were
-                recorded and should be reviewed with your clinician. Persistent or worsening signs
-                need prompt follow-up.
+                <span className="font-semibold">{t("reports.dangerBanner", { count: dangerSigns.length })}</span>{" "}
+                {isAmharic
+                  ? "ተመዝግበዋል፤ ከጤና ባለሙያዎ ጋር መገምገም አለባቸው። የሚቀጥሉ ወይም የሚባባሱ ምልክቶች አፋጣኝ ክትትል ያስፈልጋቸዋል።"
+                  : "were recorded and should be reviewed with your clinician. Persistent or worsening signs need prompt follow-up."}
               </span>
             </p>
           )}
           <p className="mt-4 text-[12.5px] italic text-[#85735a] dark:text-[#a8967b]">
-            Generated from {TOTAL_DAYS - report.daysMissed} voice check-ins. Bring any questions to
-            your appointment.
+            {t("reports.generatedFromCheckins", { count: TOTAL_DAYS - report.daysMissed })}
           </p>
           <p className="mt-4 border-t border-[#e2d3b4] pt-3 text-[12.5px] whitespace-pre-wrap text-[#6f6149] dark:border-[#3d3123] dark:text-[#a8967b]">
-            Generated at {report.generatedAt}
+            {t("reports.generatedAtPrefix", { time: report.generatedAt })}
           </p>
         </section>
       </div>

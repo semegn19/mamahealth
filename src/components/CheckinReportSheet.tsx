@@ -1,23 +1,30 @@
+"use client";
+
 import { AlertTriangle, X } from "lucide-react";
+import { useTranslation } from "./languageStore";
 
 /** A single answered (or skipped) check-in question, as captured by voice. */
 export type CheckinEntry = {
   question: string;
+  question_am?: string;
   answer: string | null;
+  answer_am?: string | null;
   severity: number | null;
   skipped: boolean;
 };
 
 export type CheckinDangerSign = {
   name: string;
+  name_am?: string;
   detail: string;
+  detail_am?: string;
   severity: "High" | "Critical";
 };
 
-export function severityLabel(value: number) {
-  if (value <= 33) return "Mild";
-  if (value <= 66) return "Moderate";
-  return "Severe";
+export function severityLabel(value: number, isAmharic: boolean) {
+  if (value <= 33) return isAmharic ? "ቀላል" : "Mild";
+  if (value <= 66) return isAmharic ? "መካከለኛ" : "Moderate";
+  return isAmharic ? "ከፍተኛ" : "Severe";
 }
 
 function severityDotColor(value: number) {
@@ -36,7 +43,7 @@ export function CheckinReportSheet({
   eyebrow,
   title,
   entries,
-  emptyMessage = "No questions answered yet.",
+  emptyMessage,
   dangerSigns = [],
 }: {
   open: boolean;
@@ -47,7 +54,10 @@ export function CheckinReportSheet({
   emptyMessage?: string;
   dangerSigns?: CheckinDangerSign[];
 }) {
+  const { t, isAmharic } = useTranslation();
   if (!open) return null;
+
+  const defaultEmpty = emptyMessage ?? t("logs.emptyDetail");
 
   return (
     <div
@@ -78,7 +88,7 @@ export function CheckinReportSheet({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close check-in detail"
+            aria-label={t("common.close")}
             className="home-icon-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
           >
             <X size={18} strokeWidth={1.8} />
@@ -88,7 +98,7 @@ export function CheckinReportSheet({
         <div className="mt-5 space-y-4">
           {dangerSigns.length > 0 && (
             <section
-              aria-label="Danger signs recorded"
+              aria-label={t("logs.dangerRecordedTitle")}
               className="home-glass rounded-[26px] !border-[#c65a45]/35 p-5 sm:p-6 dark:!border-[#d9715b]/38"
             >
               <div className="flex items-start gap-3">
@@ -100,23 +110,22 @@ export function CheckinReportSheet({
                 </span>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-[18px] font-medium tracking-tight text-[#7d2b1c] dark:text-[#fde8e1]">
-                    Danger sign recorded
+                    {t("logs.dangerRecordedTitle")}
                   </h3>
                   <p className="mt-1 text-[13px] leading-relaxed text-[#8a3b2c] dark:text-[#eab0a2]">
-                    Please contact your midwife or care team promptly to review this sign. If it is
-                    ongoing or worsening, seek urgent care.
+                    {t("logs.dangerRecordedAdvice")}
                   </p>
                 </div>
               </div>
 
               <ul className="mt-4 divide-y divide-[#c65a45]/15 border-t border-[#c65a45]/15 dark:divide-[#d9715b]/18 dark:border-[#d9715b]/18">
-                {dangerSigns.map((sign) => (
-                  <li key={sign.name} className="pt-3.5 first:pt-3.5">
+                {dangerSigns.map((sign, idx) => (
+                  <li key={`${sign.name}-${idx}`} className="pt-3.5 first:pt-3.5">
                     <p className="text-[15px] font-medium text-[#63281d] dark:text-[#fde8e1]">
-                      {sign.name}
+                      {isAmharic ? (sign.name_am ?? sign.name) : sign.name}
                     </p>
                     <p className="mt-0.5 text-[13px] leading-relaxed text-[#8d3d2b] dark:text-[#eab0a2]">
-                      {sign.detail}
+                      {isAmharic ? (sign.detail_am ?? sign.detail) : sign.detail}
                     </p>
                   </li>
                 ))}
@@ -124,38 +133,41 @@ export function CheckinReportSheet({
             </section>
           )}
 
-          <section aria-label="Recorded responses">
+          <section aria-label={t("logs.responsesTitle")}>
             <h3 className="text-[18px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-              Responses
+              {t("logs.responsesTitle")}
             </h3>
             <p className="mt-1 text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-              Questions and answers from this check-in.
+              {t("logs.responsesSubtitle")}
             </p>
 
             {entries.length === 0 ? (
               <p className="mt-4 py-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                {emptyMessage}
+                {defaultEmpty}
               </p>
             ) : (
               <ul className="mt-4 divide-y divide-[#b98a3e]/15 border-t border-[#b98a3e]/15 dark:divide-[#e5be79]/12 dark:border-[#e5be79]/12">
                 {entries.map((entry, index) => {
                   const severity = entry.severity ?? 50;
+                  const displayQ = isAmharic ? (entry.question_am ?? entry.question) : entry.question;
+                  const displayA = isAmharic ? (entry.answer_am ?? entry.answer) : entry.answer;
+
                   return (
                     <li
                       key={`${entry.question}-${index}`}
                       className="py-3.5 first:pt-3.5 last:pb-0"
                     >
                       <p className="text-[12.5px] font-medium text-[#6f6149] dark:text-[#b9a88e]">
-                        {entry.question}
+                        {displayQ}
                       </p>
                       {entry.skipped ? (
                         <p className="mt-1 text-[14.5px] italic text-[#9b8a6f] dark:text-[#86765f]">
-                          Skipped
+                          {t("logs.skipped")}
                         </p>
                       ) : (
                         <>
                           <p className="mt-1 text-[15px] leading-relaxed text-[#3b3226] dark:text-[#f5ede0]">
-                            {entry.answer}
+                            {displayA}
                           </p>
                           {entry.severity !== null && (
                             <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] text-[#85735a] dark:text-[#9c8b72]">
@@ -163,7 +175,9 @@ export function CheckinReportSheet({
                                 aria-hidden="true"
                                 className={`h-1.5 w-1.5 rounded-full ${severityDotColor(severity)}`}
                               />
-                              {severityLabel(severity)} severity
+                              {t("logs.severityBadge", {
+                                severity: severityLabel(severity, isAmharic),
+                              })}
                             </p>
                           )}
                         </>

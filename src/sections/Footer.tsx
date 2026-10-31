@@ -1,4 +1,7 @@
+"use client";
+
 import { Camera as Instagram } from "lucide-react";
+import { useTranslation } from "@/components/languageStore";
 
 /**
  * Footer: a full-bleed, soft landscape of rounded hills in light honey tones
@@ -7,6 +10,8 @@ import { Camera as Instagram } from "lucide-react";
  * No outer frame or bottom gap: the landscape runs to the edges of the screen.
  */
 export function Footer() {
+  const { t } = useTranslation();
+
   return (
     <footer id="contact" className="relative w-full overflow-hidden bg-[#f5ecdb] dark:bg-[#14100c]">
       <div className="relative min-h-[480px] w-full sm:min-h-[540px]">
@@ -94,7 +99,7 @@ export function Footer() {
                   Mama Health
                 </p>
                 <p className="text-[14px] text-[#6f6149] dark:text-[#b9a88e]">
-                  Gentle care for every stage
+                  {t("landing.growWithUsSub")}
                 </p>
               </div>
             </div>
@@ -102,7 +107,7 @@ export function Footer() {
             {/* Say hello */}
             <div className="text-center md:text-left">
               <p className="text-[12px] uppercase tracking-[0.28em] text-[#8d6a2a] dark:text-[#dfb870]">
-                Say hello
+                {t("landing.sayHello")}
               </p>
               <a
                 href="mailto:hello@mamahealth.example"
@@ -113,49 +118,49 @@ export function Footer() {
                 </span>
               </a>
               <p className="mt-2 text-[16px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                We would love to hear from you.
+                {t("landing.sayHelloSub")}
               </p>
             </div>
 
             {/* Grow with us */}
             <div className="text-center md:text-left">
               <p className="text-[12px] uppercase tracking-[0.28em] text-[#8d6a2a] dark:text-[#dfb870]">
-                Grow with us
+                {t("landing.growWithUs")}
               </p>
               <a
                 href="#home"
                 className="group relative mt-3 inline-block text-[clamp(21px,2.2vw,30px)] font-light tracking-[-0.025em] text-[#4a3f30] transition-colors duration-300 hover:text-[#8d6a2a] dark:text-[#f5ede0] dark:hover:text-[#e5be79]"
               >
                 <span className="relative after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 group-hover:after:scale-x-100 group-focus-visible:after:scale-x-100">
-                  Join the waitlist
+                  {t("nav.waitlist")}
                 </span>
               </a>
               <p className="mt-2 text-[16px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                A gentler beginning, together.
+                {t("landing.growWithUsSub")}
               </p>
             </div>
           </div>
 
           <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-[#8d6a2a]/20 pt-6 text-[13px] text-[#6f6149] sm:flex-row dark:border-[#e5be79]/18 dark:text-[#9c8b72]">
-            <p>© 2026 Mama Health. Made with care.</p>
+            <p>{t("landing.copyright")}</p>
             <nav className="flex gap-6">
               <a
                 href="#"
                 className="group relative transition-colors hover:text-[#4a3f30] after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 hover:after:scale-x-100 dark:hover:text-[#f5ede0]"
               >
-                Privacy
+                {t("landing.privacy")}
               </a>
               <a
                 href="#"
                 className="group relative transition-colors hover:text-[#4a3f30] after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 hover:after:scale-x-100 dark:hover:text-[#f5ede0]"
               >
-                Terms
+                {t("landing.terms")}
               </a>
               <a
                 href="#journey"
                 className="group relative transition-colors hover:text-[#4a3f30] after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 hover:after:scale-x-100 dark:hover:text-[#f5ede0]"
               >
-                Journey
+                {t("nav.calendar")}
               </a>
             </nav>
           </div>

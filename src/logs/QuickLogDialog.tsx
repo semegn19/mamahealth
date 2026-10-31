@@ -15,14 +15,15 @@ import {
 } from "lucide-react";
 import { useProfile } from "../settings/profileStore";
 import { useManualFood, useManualSupplements } from "./quickLogStore";
+import { useTranslation } from "../components/languageStore";
 
 /** Food groups used by the hand log (kept in sync with the ANC report). */
 export const FOOD_GROUPS_FOR_LOG = [
-  { name: "Grains", Icon: Wheat },
-  { name: "Protein", Icon: Beef },
-  { name: "Dairy", Icon: Milk },
-  { name: "Fruit", Icon: Apple },
-  { name: "Vegetables", Icon: Carrot },
+  { name: "Grains", name_am: "እህል", Icon: Wheat },
+  { name: "Protein", name_am: "ፕሮቲን", Icon: Beef },
+  { name: "Dairy", name_am: "የወተት ተዋጽኦ", Icon: Milk },
+  { name: "Fruit", name_am: "ፍራፍሬ", Icon: Apple },
+  { name: "Vegetables", name_am: "አትክልት", Icon: Carrot },
 ] as const;
 
 type Screen = "choose" | "supplements" | "food" | "saved";
@@ -36,6 +37,7 @@ export function QuickLogDialog({
   onClose: () => void;
   initialScreen?: Exclude<Screen, "saved">;
 }) {
+  const { t, isAmharic } = useTranslation();
   const { profile } = useProfile();
   const { items: savedSupplements, save: saveSupplements } = useManualSupplements();
   const { save: saveFood } = useManualFood();
@@ -60,10 +62,10 @@ export function QuickLogDialog({
       profile.supplements.length > 0
         ? profile.supplements
         : [
-            { id: "iron", name: "Iron", reminderTime: "" },
-            { id: "calcium", name: "Calcium", reminderTime: "" },
+            { id: "iron", name: isAmharic ? "የብረት እንክብል" : "Iron", reminderTime: "" },
+            { id: "calcium", name: isAmharic ? "ካልሲየም" : "Calcium", reminderTime: "" },
           ],
-    [profile.supplements],
+    [profile.supplements, isAmharic],
   );
 
   // Reset once per opening, and preselect anything already saved today.
@@ -132,7 +134,11 @@ export function QuickLogDialog({
   const saveSupplementAnswers = () => {
     const unanswered = supplements.filter((supplement) => answers[supplement.id] === undefined);
     if (unanswered.length > 0) {
-      setError(`Answer yes or no for ${unanswered.map((s) => s.name).join(" and ")}.`);
+      setError(
+        t("quickLog.answerYesNoFor", {
+          items: unanswered.map((s) => s.name).join(isAmharic ? " እና " : " and "),
+        }),
+      );
       return;
     }
     const next = supplements.map((supplement) => ({
@@ -144,22 +150,34 @@ export function QuickLogDialog({
     const taken = next.filter((item) => item.taken).length;
     setSavedSummary(
       taken === next.length
-        ? `${next.map((item) => item.name).join(" and ")} recorded as taken.`
-        : `${taken} of ${next.length} supplements marked as taken.`,
+        ? t("quickLog.allSupplementsTaken", {
+            items: next.map((item) => item.name).join(isAmharic ? " እና " : " and "),
+          })
+        : t("quickLog.partSupplementsTaken", {
+            taken,
+            total: next.length,
+          }),
     );
     setScreen("saved");
   };
 
   const saveFoodAnswers = () => {
     if (groups.length === 0) {
-      setError("Choose at least one food group you ate today.");
+      setError(t("quickLog.chooseAtLeastOneFood"));
       return;
     }
     saveFood(groups);
+    const names = groups
+      .map((index) =>
+        isAmharic ? FOOD_GROUPS_FOR_LOG[index].name_am : FOOD_GROUPS_FOR_LOG[index].name,
+      )
+      .join(isAmharic ? "፣ " : ", ");
     setSavedSummary(
-      `${groups.length} of ${FOOD_GROUPS_FOR_LOG.length} food groups logged: ${groups
-        .map((index) => FOOD_GROUPS_FOR_LOG[index].name)
-        .join(", ")}.`,
+      t("quickLog.foodGroupsLogged", {
+        count: groups.length,
+        total: FOOD_GROUPS_FOR_LOG.length,
+        items: names,
+      }),
     );
     setScreen("saved");
   };
@@ -200,7 +218,7 @@ export function QuickLogDialog({
             <button
               type="button"
               onClick={goBack}
-              aria-label="Back to log options"
+              aria-label={t("common.back")}
               className="home-icon-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] active:scale-95"
             >
               <ChevronLeft size={19} strokeWidth={1.9} />
@@ -212,16 +230,16 @@ export function QuickLogDialog({
             id="quick-log-title"
             className="mt-2 flex-1 text-center text-[22px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
           >
-            {screen === "choose" && "Log by hand"}
-            {screen === "supplements" && "Did you take your supplements?"}
-            {screen === "food" && "What did you eat today?"}
-            {screen === "saved" && "Saved"}
+            {screen === "choose" && t("quickLog.title")}
+            {screen === "supplements" && t("quickLog.didYouTakeSupplements")}
+            {screen === "food" && t("quickLog.whatDidYouEat")}
+            {screen === "saved" && t("quickLog.saved")}
           </h2>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="Close log"
+            aria-label={t("common.close")}
             className="home-icon-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] active:scale-95"
           >
             <X size={19} strokeWidth={1.8} />
@@ -231,7 +249,7 @@ export function QuickLogDialog({
         {screen === "choose" && (
           <div className="mt-6 space-y-3">
             <p className="text-center text-[13.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-              What would you like to log today?
+              {t("quickLog.choosePrompt")}
             </p>
             <button
               type="button"
@@ -246,10 +264,10 @@ export function QuickLogDialog({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15.5px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                  Log supplements
+                  {t("quickLog.logSupplements")}
                 </span>
                 <span className="mt-0.5 block text-[12.5px] text-[#85735a] dark:text-[#9c8b72]">
-                  Yes or no for each one
+                  {t("quickLog.logSupplementsSub")}
                 </span>
               </span>
               <ChevronLeft
@@ -271,10 +289,10 @@ export function QuickLogDialog({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15.5px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                  Log food
+                  {t("quickLog.logFood")}
                 </span>
                 <span className="mt-0.5 block text-[12.5px] text-[#85735a] dark:text-[#9c8b72]">
-                  Pick the food groups you ate
+                  {t("quickLog.logFoodSub")}
                 </span>
               </span>
               <ChevronLeft
@@ -289,7 +307,7 @@ export function QuickLogDialog({
         {screen === "supplements" && (
           <div className="mt-5">
             <p className="text-center text-[13.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-              Tap yes or no for each supplement.
+              {t("quickLog.supplementPrompt")}
             </p>
             <ul className="mt-4 space-y-2.5">
               {supplements.map((supplement) => {
@@ -314,8 +332,8 @@ export function QuickLogDialog({
                         aria-label={`${supplement.name} taken today?`}
                       >
                         {[
-                          { label: "Yes", taken: true },
-                          { label: "No", taken: false },
+                          { label: t("common.yes"), taken: true },
+                          { label: t("common.no"), taken: false },
                         ].map((option) => {
                           const active = value === option.taken;
                           return (
@@ -359,7 +377,7 @@ export function QuickLogDialog({
               className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#4a3f30] px-6 py-3.5 text-[14.5px] font-medium text-[#fffaf0] transition hover:bg-[#655039] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
             >
               <Check size={17} strokeWidth={2} aria-hidden="true" />
-              Complete
+              {t("quickLog.complete")}
             </button>
           </div>
         )}
@@ -367,11 +385,13 @@ export function QuickLogDialog({
         {screen === "food" && (
           <div className="mt-5">
             <p className="text-center text-[13.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-              Select every food group you ate today.
+              {t("quickLog.foodPrompt")}
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2.5" role="group" aria-label="Food groups">
               {FOOD_GROUPS_FOR_LOG.map((group, index) => {
                 const active = groups.includes(index);
+                const displayName = isAmharic ? group.name_am : group.name;
+
                 return (
                   <button
                     key={group.name}
@@ -401,7 +421,7 @@ export function QuickLogDialog({
                       <group.Icon size={17} strokeWidth={1.8} aria-hidden="true" />
                     </span>
                     <span className="min-w-0 flex-1 text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                      {group.name}
+                      {displayName}
                     </span>
                     {active && (
                       <Check
@@ -426,7 +446,7 @@ export function QuickLogDialog({
               className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#4a3f30] px-6 py-3.5 text-[14.5px] font-medium text-[#fffaf0] transition hover:bg-[#655039] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
             >
               <Check size={17} strokeWidth={2} aria-hidden="true" />
-              Complete
+              {t("quickLog.complete")}
             </button>
           </div>
         )}
@@ -437,20 +457,20 @@ export function QuickLogDialog({
               <Save size={26} strokeWidth={2} aria-hidden="true" />
             </span>
             <p className="mt-3 text-[16px] font-semibold text-[#3b3226] dark:text-[#f5ede0]">
-              Your log is saved
+              {t("quickLog.savedTitle")}
             </p>
             <p className="mx-auto mt-1 max-w-[36ch] text-[13.5px] leading-relaxed text-[#6f6149] dark:text-[#c7b69c]">
               {savedSummary}
             </p>
             <p className="mx-auto mt-2 max-w-[36ch] text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
-              It will be included in your next ANC report.
+              {t("quickLog.willBeIncluded")}
             </p>
             <button
               type="button"
               onClick={finish}
               className="mt-5 min-h-12 w-full rounded-full bg-[#4a3f30] px-6 py-3.5 text-[14.5px] font-medium text-[#fffaf0] transition hover:bg-[#655039] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
             >
-              Done
+              {t("quickLog.done")}
             </button>
             <button
               type="button"
@@ -461,7 +481,7 @@ export function QuickLogDialog({
               }}
               className="mt-2 min-h-11 w-full rounded-full px-6 text-[13.5px] font-medium text-[#6f5a35] underline decoration-[#b98a3e]/50 underline-offset-4 transition hover:text-[#3b3226] dark:text-[#dfb870] dark:hover:text-[#f5ede0]"
             >
-              Log something else
+              {t("quickLog.logSomethingElse")}
             </button>
           </div>
         )}

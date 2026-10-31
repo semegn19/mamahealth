@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Copy, Download, Share2, X } from "lucide-react";
 import { LeafMark } from "../components/LeafMark";
 import { QRCodeSVG } from "qrcode.react";
+import { useTranslation } from "../components/languageStore";
 
 type CopyState = "idle" | "copied" | "manual";
 
@@ -21,6 +22,7 @@ export function ShareReportDialog({
   reportId: string;
   appointment: string;
 }) {
+  const { t, isAmharic } = useTranslation();
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [shareFailed, setShareFailed] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -165,10 +167,10 @@ export function ShareReportDialog({
               id="share-report-title"
               className="text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
             >
-              Share report
+              {t("reports.shareDialogTitle")}
             </h2>
             <p className="mt-1.5 text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-              Your {appointment} · open on any device
+              {t("reports.shareDialogSub", { appointment })}
             </p>
           </div>
           <button
@@ -205,7 +207,7 @@ export function ShareReportDialog({
             </span>
           </div>
           <p className="mt-3 text-center text-[12.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-            Scan with a phone camera to open the report
+            {t("reports.qrScanHint")}
           </p>
         </div>
 
@@ -215,7 +217,7 @@ export function ShareReportDialog({
             htmlFor="share-report-link"
             className="block text-[12px] font-medium uppercase tracking-[0.12em] text-[#8d6a2a] dark:text-[#dfb870]"
           >
-            Report link
+            {t("reports.reportLink")}
           </label>
           <div className="mt-2">
             <input
@@ -233,9 +235,9 @@ export function ShareReportDialog({
             className="mt-2 min-h-5 text-[12.5px] text-[#6f5a35] dark:text-[#e5be79]"
           >
             {copyState === "copied"
-              ? "Link copied to your clipboard."
+              ? t("reports.linkCopied")
               : copyState === "manual"
-                ? "Select the highlighted link and copy it."
+                ? t("reports.selectHighlightedLink")
                 : ""}
           </p>
         </div>
@@ -248,7 +250,7 @@ export function ShareReportDialog({
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#4a3f30] px-6 py-3.5 text-[14.5px] font-medium text-[#fffaf0] transition hover:bg-[#655039] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
           >
             <Copy size={17} strokeWidth={1.9} aria-hidden="true" />
-            Copy link
+            {t("reports.copyLink")}
           </button>
           <div className="grid grid-cols-2 gap-2.5">
             <button
@@ -257,7 +259,7 @@ export function ShareReportDialog({
               className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#d8c6a4] bg-white/60 px-4 py-3 text-[13.5px] font-medium text-[#6f5a35] transition hover:bg-white/85 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:border-[#4a3c2c] dark:bg-[#1b1510] dark:text-[#dfcfb6] dark:hover:bg-[#271f17]"
             >
               <Share2 size={16} strokeWidth={1.8} aria-hidden="true" />
-              Share…
+              {t("reports.shareBtn")}
             </button>
             <button
               type="button"
@@ -265,18 +267,18 @@ export function ShareReportDialog({
               className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#d8c6a4] bg-white/60 px-4 py-3 text-[13.5px] font-medium text-[#6f5a35] transition hover:bg-white/85 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:border-[#4a3c2c] dark:bg-[#1b1510] dark:text-[#dfcfb6] dark:hover:bg-[#271f17]"
             >
               <Download size={16} strokeWidth={1.8} aria-hidden="true" />
-              Save QR
+              {t("reports.saveQr")}
             </button>
           </div>
           {shareFailed && (
             <p role="alert" className="text-center text-[12.5px] text-[#9c3a29] dark:text-[#f08b75]">
-              Sharing isn't available on this device. Copy the link instead.
+              {t("reports.shareNotSupported")}
             </p>
           )}
         </div>
 
         <p className="mt-4 text-center text-[11.5px] leading-relaxed text-[#8d7a5c] dark:text-[#9c8b72]">
-          Only share this with your care team. Anyone with the link or QR code can open the report.
+          {t("reports.shareWarning")}
         </p>
       </div>
     </div>,

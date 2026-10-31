@@ -6,20 +6,22 @@ import { BottomNav } from "@/components/BottomNav";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { CheckinReportSheet } from "../components/CheckinReportSheet";
 import { CHECKIN_LOGS } from "./checkinLogsData";
+import { useTranslation } from "@/components/languageStore";
 
-function formatDate(date: Date) {
-  return date.toLocaleDateString("en-GB", {
+function formatDate(date: Date, isAmharic: boolean) {
+  return date.toLocaleDateString(isAmharic ? "am-ET" : "en-GB", {
     weekday: "short",
     day: "numeric",
     month: "short",
   });
 }
 
-function formatTime(date: Date) {
-  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+function formatTime(date: Date, isAmharic: boolean) {
+  return date.toLocaleTimeString(isAmharic ? "am-ET" : "en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
 export function CheckinLogs() {
+  const { t, isAmharic } = useTranslation();
   const [openLogId, setOpenLogId] = useState<string | null>(null);
   const openLog = CHECKIN_LOGS.find((log) => log.id === openLogId) ?? null;
 
@@ -36,17 +38,19 @@ export function CheckinLogs() {
 
         <section className="mt-8">
           <h1 className="text-[34px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
-            Check-in logs
+            {t("logs.title")}
           </h1>
           <p className="mt-3 max-w-[38ch] text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-            Every voice check-in you complete, day by day. Tap one to review what was recorded.
+            {t("logs.subtitle")}
           </p>
         </section>
 
-        <section aria-label="Daily check-in logs" className="mt-6 space-y-3.5">
+        <section aria-label={t("logs.title")} className="mt-6 space-y-3.5">
           {CHECKIN_LOGS.map((log, index) => {
             const dangerSigns = log.dangerSigns ?? [];
             const hasDanger = dangerSigns.length > 0;
+            const sessionLabel =
+              log.session === "Morning" ? t("logs.morningSession") : t("logs.eveningSession");
 
             return (
               <button
@@ -54,11 +58,7 @@ export function CheckinLogs() {
                 type="button"
                 data-dashboard-card
                 onClick={() => setOpenLogId(log.id)}
-                aria-label={`${formatDate(log.date)}, ${formatTime(log.date)}${
-                  hasDanger
-                    ? `, ${dangerSigns.length} danger sign${dangerSigns.length === 1 ? "" : "s"} recorded`
-                    : ""
-                }`}
+                aria-label={`${formatDate(log.date, isAmharic)}, ${formatTime(log.date, isAmharic)}`}
                 className={`report-list-card home-glass group flex w-full items-center gap-3.5 rounded-[26px] p-5 text-left transition hover:-translate-y-0.5 active:scale-[0.99] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 sm:px-6 ${
                   hasDanger
                     ? "!border-[#c65a45]/35 hover:!border-[#c65a45]/60 focus-visible:outline-[#9c3a29] dark:!border-[#d9715b]/38 dark:hover:!border-[#e8846e]/65 dark:focus-visible:outline-[#f08b75]"
@@ -83,10 +83,11 @@ export function CheckinLogs() {
 
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[17px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {formatDate(log.date)}
+                    {formatDate(log.date, isAmharic)}
                   </span>
                   <span className="mt-0.5 block text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    {formatTime(log.date)} · {log.entries.length} questions
+                    {formatTime(log.date, isAmharic)} · {sessionLabel} ·{" "}
+                    {t("logs.questionCount", { count: log.entries.length })}
                   </span>
                 </span>
 
@@ -111,11 +112,15 @@ export function CheckinLogs() {
       <CheckinReportSheet
         open={openLog !== null}
         onClose={() => setOpenLogId(null)}
-        eyebrow={openLog ? `${formatDate(openLog.date)} · ${formatTime(openLog.date)}` : ""}
-        title="Check-in detail"
+        eyebrow={
+          openLog
+            ? `${formatDate(openLog.date, isAmharic)} · ${formatTime(openLog.date, isAmharic)}`
+            : ""
+        }
+        title={t("logs.detailTitle")}
         entries={openLog?.entries ?? []}
         dangerSigns={openLog?.dangerSigns}
-        emptyMessage="No questions were recorded for this check-in."
+        emptyMessage={t("logs.emptyDetail")}
       />
     </div>
   );

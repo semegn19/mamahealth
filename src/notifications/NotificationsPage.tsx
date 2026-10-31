@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { BottomNav } from "../components/BottomNav";
 import { useNotifications, type NotificationItem } from "./notificationsData";
+import { useTranslation } from "../components/languageStore";
 
 export function NotificationsPage() {
+  const { t, isAmharic } = useTranslation();
   const { items, markAllRead } = useNotifications();
   const [tab, setTab] = useState<"unread" | "read">("unread");
 
@@ -64,14 +66,14 @@ export function NotificationsPage() {
             <Link
               href="/home"
               prefetch={true}
-              aria-label="Back to home"
+              aria-label={t("notifications.backHome")}
               className="home-icon-solid flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
             >
               <ChevronLeft size={20} strokeWidth={1.8} />
             </Link>
             <div>
               <h1 className="text-[30px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
-                Notifications
+                {t("notifications.title")}
               </h1>
             </div>
           </div>
@@ -83,8 +85,7 @@ export function NotificationsPage() {
               className="flex items-center gap-1.5 rounded-full border border-[#d8c6a4] bg-white/60 px-3.5 py-2 text-[12.5px] font-medium text-[#6f5a35] transition hover:bg-white active:scale-95 dark:border-[#4a3c2c] dark:bg-[#231c15]/85 dark:text-[#e5be79] dark:hover:bg-[#2d241b]"
             >
               <CheckCheck size={15} strokeWidth={1.9} />
-              <span className="hidden sm:inline">Mark all read</span>
-              <span className="sm:hidden">All read</span>
+              <span>{t("notifications.markAllRead")}</span>
             </button>
           )}
         </header>
@@ -111,7 +112,7 @@ export function NotificationsPage() {
                   : "text-[#6f6149] hover:text-[#3b3226] dark:text-[#b9a88e] dark:hover:text-[#f5ede0]"
               }`}
             >
-              <span>Unread</span>
+              <span>{t("notifications.unreadTab")}</span>
               {unreadItems.length > 0 && (
                 <span
                   className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums transition-colors ${
@@ -136,7 +137,7 @@ export function NotificationsPage() {
                   : "text-[#6f6149] hover:text-[#3b3226] dark:text-[#b9a88e] dark:hover:text-[#f5ede0]"
               }`}
             >
-              <span>Read</span>
+              <span>{t("notifications.readTab")}</span>
               {readItems.length > 0 && (
                 <span
                   className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums transition-colors ${
@@ -160,54 +161,58 @@ export function NotificationsPage() {
                 <Bell size={22} strokeWidth={1.8} />
               </span>
               <h2 className="mt-4 text-[18px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                {tab === "unread" ? "You're all caught up" : "No read notifications"}
+                {tab === "unread" ? t("notifications.allCaughtUp") : t("notifications.noRead")}
               </h2>
               <p className="mt-1 text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                {tab === "unread"
-                  ? "When new reminders or check-in prompts arrive, they will appear here."
-                  : "Notifications marked as read will be archived here."}
+                {tab === "unread" ? t("notifications.unreadDesc") : t("notifications.readDesc")}
               </p>
             </div>
           ) : (
-            currentList.map((notif) => (
-              <article
-                key={notif.id}
-                data-dashboard-card
-                className={`relative overflow-hidden rounded-[24px] border p-4 sm:p-5 text-left transition-all backdrop-blur-xl ${
-                  !notif.read
-                    ? "border-[#c9a35d]/50 bg-gradient-to-br from-white/95 to-[#fbf5e8]/90 shadow-[0_12px_30px_-18px_rgba(112,78,28,0.45)] dark:border-[#e5be79]/40 dark:from-[#292118]/96 dark:to-[#1f1912]/94 dark:shadow-[0_14px_34px_-18px_rgba(0,0,0,0.8)]"
-                    : "border-white/60 bg-white/60 shadow-[0_4px_16px_-10px_rgba(112,78,28,0.2)] opacity-85 dark:border-[#3d3123]/80 dark:bg-[#1c1611]/75 dark:shadow-[0_8px_22px_-14px_rgba(0,0,0,0.7)]"
-                }`}
-              >
-                <div className="flex items-start gap-3.5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fbe7b8]/70 shadow-sm dark:bg-[#e5be79]/16">
-                    {getCategoryIcon(notif.category)}
-                  </span>
+            currentList.map((notif) => {
+              const displayTitle = isAmharic ? (notif.title_am ?? notif.title) : notif.title;
+              const displayMessage = isAmharic ? (notif.message_am ?? notif.message) : notif.message;
+              const displayTime = isAmharic ? (notif.time_am ?? notif.time) : notif.time;
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11.5px] font-medium uppercase tracking-[0.12em] text-[#85735a] dark:text-[#9c8b72]">
-                        {notif.time}
-                      </span>
-                      {!notif.read && (
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full bg-[#c9a35d] dark:bg-[#e5be79]"
-                          title="Unread"
-                        />
-                      )}
+              return (
+                <article
+                  key={notif.id}
+                  data-dashboard-card
+                  className={`relative overflow-hidden rounded-[24px] border p-4 sm:p-5 text-left transition-all backdrop-blur-xl ${
+                    !notif.read
+                      ? "border-[#c9a35d]/50 bg-gradient-to-br from-white/95 to-[#fbf5e8]/90 shadow-[0_12px_30px_-18px_rgba(112,78,28,0.45)] dark:border-[#e5be79]/40 dark:from-[#292118]/96 dark:to-[#1f1912]/94 dark:shadow-[0_14px_34px_-18px_rgba(0,0,0,0.8)]"
+                      : "border-white/60 bg-white/60 shadow-[0_4px_16px_-10px_rgba(112,78,28,0.2)] opacity-85 dark:border-[#3d3123]/80 dark:bg-[#1c1611]/75 dark:shadow-[0_8px_22px_-14px_rgba(0,0,0,0.7)]"
+                  }`}
+                >
+                  <div className="flex items-start gap-3.5">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fbe7b8]/70 shadow-sm dark:bg-[#e5be79]/16">
+                      {getCategoryIcon(notif.category)}
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11.5px] font-medium uppercase tracking-[0.12em] text-[#85735a] dark:text-[#9c8b72]">
+                          {displayTime}
+                        </span>
+                        {!notif.read && (
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full bg-[#c9a35d] dark:bg-[#e5be79]"
+                            title="Unread"
+                          />
+                        )}
+                      </div>
+
+                      <h2 className="mt-1 text-[15.5px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
+                        {displayTitle}
+                      </h2>
+
+                      <p className="mt-1 text-[13.5px] leading-relaxed text-[#6f6149] dark:text-[#c7b69c]">
+                        {displayMessage}
+                      </p>
                     </div>
-
-                    <h2 className="mt-1 text-[15.5px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                      {notif.title}
-                    </h2>
-
-                    <p className="mt-1 text-[13.5px] leading-relaxed text-[#6f6149] dark:text-[#c7b69c]">
-                      {notif.message}
-                    </p>
                   </div>
-                </div>
-              </article>
-            ))
+                </article>
+              );
+            })
           )}
         </section>
       </main>

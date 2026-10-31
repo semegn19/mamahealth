@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { ShareReportDialog } from "./ShareReportDialog";
+import { useTranslation } from "../components/languageStore";
 
 /** Opens the share-with-clinician dialog (QR code + link) for a report. */
 export function ReportShareButton({
@@ -10,6 +11,7 @@ export function ReportShareButton({
   appointment: string;
   reportId: string;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -17,7 +19,7 @@ export function ReportShareButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Share ANC report"
+        aria-label={t("reports.shareWithDoctor")}
         aria-haspopup="dialog"
         className="home-icon-solid flex h-12 w-12 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
       >
