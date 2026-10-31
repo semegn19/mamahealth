@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
-import { BotanicalArt } from "./BotanicalIllustration";
+import { PregnantLeafArt } from "./PregnantLeafIllustration";
 
 /**
  * Meaningful line-art illustrations drawn with soft golden gradient strokes
@@ -216,7 +216,7 @@ export function CareIllustration({ art, className = "" }: { art: CareArt; classN
       <Defs uid={uid} />
       <Backdrop uid={uid} />
       {art === "morning" && <MorningArt uid={uid} draw={draw} />}
-      {art === "kicks" && <BotanicalArt uid={uid} draw={draw} />}
+      {art === "kicks" && <PregnantLeafArt uid={uid} draw={draw} />}
       {art === "midwife" && <MidwifeArt uid={uid} draw={draw} />}
     </svg>
   );

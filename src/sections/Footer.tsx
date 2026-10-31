@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera as Instagram } from "lucide-react";
+import { AppLogo } from "@/components/AppLogo";
 import { useTranslation } from "@/components/languageStore";
 
 /**
@@ -87,12 +87,12 @@ export function Footer() {
             <div className="flex items-center gap-4">
               <a
                 href="#"
-                aria-label="Mama Health on Instagram"
-                className="relative flex h-16 w-16 items-center justify-center bg-[#b98a3e] text-[#fffaf0] shadow-[0_10px_30px_-10px_rgba(160,115,45,0.5)] transition-transform duration-500 ease-out hover:-translate-y-1 hover:scale-105 dark:bg-[#e5be79] dark:text-[#231b12]"
+                aria-label="Mama Health"
+                className="relative flex h-16 w-16 items-center justify-center bg-[#3b3226] p-2.5 text-[#fffaf0] shadow-[0_10px_30px_-10px_rgba(60,45,25,0.45)] transition-transform duration-500 ease-out hover:-translate-y-1 hover:scale-105 dark:border dark:border-[#e5be79]/30 dark:bg-[#221c15] dark:shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]"
                 style={{ borderRadius: "58% 42% 50% 50% / 52% 48% 52% 48%" }}
               >
-                <Instagram size={22} strokeWidth={1.8} />
-                <span className="absolute -right-3 -top-3 h-3.5 w-3.5 rounded-full bg-[#b98a3e] dark:bg-[#e5be79]" />
+                <AppLogo className="h-full w-full" size={40} />
+                <span className="absolute -right-2.5 -top-2.5 h-3.5 w-3.5 rounded-full bg-[#c9a35d] dark:bg-[#e5be79]" />
               </a>
               <div>
                 <p className="text-[28px] font-light tracking-[-0.03em] text-[#4a3f30] dark:text-[#f5ede0]">

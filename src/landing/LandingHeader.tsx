@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AppLogo } from "../components/AppLogo";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { useTranslation } from "../components/languageStore";
 
@@ -26,9 +25,9 @@ export function LandingHeader() {
 
   return (
     <>
-      <header className="flex items-center justify-between gap-6 lg:max-w-[70%] xl:max-w-[65%] 2xl:max-w-[60%]">
+      <header className="flex items-start justify-between gap-6 lg:max-w-[64%] xl:max-w-[60%] 2xl:max-w-[56%]">
         <nav className="hidden sm:block">
-          <ul className="flex items-center gap-6 text-[15px] leading-snug">
+          <ul className="space-y-0.5 text-[15px] leading-snug">
             {NAV_KEYS.map((item) => (
               <li key={item.key}>
                 <button
@@ -56,11 +55,8 @@ export function LandingHeader() {
 
         <a
           href="#"
-          className="flex items-center gap-2.5 text-[17px] font-medium tracking-tight text-[#4a3f30] dark:text-[#f5ede0]"
+          className="text-[17px] font-medium tracking-tight text-[#4a3f30] dark:text-[#f5ede0]"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3b3226] p-1 shadow-sm dark:border dark:border-[#e5be79]/30 dark:bg-[#221c15]">
-            <AppLogo className="h-full w-full" size={24} priority />
-          </span>
           Mama Health
         </a>
 
