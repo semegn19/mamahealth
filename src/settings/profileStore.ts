@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 /* ------------------------------------------------------------------ */
 /* A tiny shared profile/settings store, persisted to localStorage so  */
@@ -33,12 +33,20 @@ export const DEFAULT_PROFILE: Profile = {
   ],
 };
 
-function read(): Profile {
+let cachedRawProfile: string | null = null;
+let cachedProfile: Profile = DEFAULT_PROFILE;
+
+function getProfileSnapshot(): Profile {
+  if (typeof window === "undefined") return DEFAULT_PROFILE;
   try {
-    const saved = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved) as Partial<Profile>;
-      return {
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
+    if (raw === cachedRawProfile) {
+      return cachedProfile;
+    }
+    cachedRawProfile = raw;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<Profile>;
+      cachedProfile = {
         name: typeof parsed.name === "string" && parsed.name.trim() ? parsed.name : DEFAULT_PROFILE.name,
         email: typeof parsed.email === "string" && parsed.email.trim() ? parsed.email.trim() : DEFAULT_PROFILE.email,
         nextAncDate: typeof parsed.nextAncDate === "string" ? parsed.nextAncDate : DEFAULT_PROFILE.nextAncDate,
@@ -46,59 +54,64 @@ function read(): Profile {
           ? (parsed.supplements as Supplement[])
           : DEFAULT_PROFILE.supplements,
       };
+      return cachedProfile;
     }
   } catch {
     // Storage may be unavailable; fall back to defaults.
   }
-  return DEFAULT_PROFILE;
+  cachedProfile = DEFAULT_PROFILE;
+  return cachedProfile;
 }
 
 function write(profile: Profile) {
+  const raw = JSON.stringify(profile);
   try {
-    localStorage.setItem(KEY, JSON.stringify(profile));
+    localStorage.setItem(KEY, raw);
   } catch {
     // Ignore write failures; in-memory state still updates.
   }
+  cachedRawProfile = raw;
+  cachedProfile = profile;
   // Let every hook instance on the page know.
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: profile }));
 }
 
+function subscribeProfile(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const handler = () => {
+    cachedRawProfile = null;
+    callback();
+  };
+  window.addEventListener(CHANGE_EVENT, handler);
+  window.addEventListener("storage", handler);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, handler);
+    window.removeEventListener("storage", handler);
+  };
+}
+
 /** Shared profile state. All components using this hook stay in sync. */
 export function useProfile() {
-  // Start from the default profile so the server and the first client render
-  // agree, then hydrate the saved profile once mounted.
-  const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
-
-  useEffect(() => {
-    setProfile(read());
-    const onChange = (event: Event) => {
-      const next = (event as CustomEvent<Profile>).detail;
-      if (next) setProfile(next);
-    };
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === KEY) setProfile(read());
-    };
-    window.addEventListener(CHANGE_EVENT, onChange);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(CHANGE_EVENT, onChange);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+  const profile = useSyncExternalStore(
+    subscribeProfile,
+    getProfileSnapshot,
+    () => DEFAULT_PROFILE,
+  );
 
   const update = (patch: Partial<Profile>) => {
     const next = { ...profile, ...patch };
-    setProfile(next);
     write(next);
   };
 
   const resetAll = () => {
     try {
       localStorage.removeItem(KEY);
+      localStorage.removeItem(LEGACY_KEY);
     } catch {
       // Ignore.
     }
-    setProfile(DEFAULT_PROFILE);
+    cachedRawProfile = null;
+    cachedProfile = DEFAULT_PROFILE;
     window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: DEFAULT_PROFILE }));
   };
 

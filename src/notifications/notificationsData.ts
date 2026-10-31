@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 export type NotificationItem = {
   id: string;
@@ -79,14 +79,21 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
+let cachedRawNotifications: string | null = null;
+let cachedNotifications: NotificationItem[] = INITIAL_NOTIFICATIONS;
+
 function loadStoredNotifications(): NotificationItem[] {
+  if (typeof window === "undefined") return INITIAL_NOTIFICATIONS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (raw === cachedRawNotifications) {
+      return cachedNotifications;
+    }
+    cachedRawNotifications = raw;
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Merge with current translations
-        return parsed.map((storedItem) => {
+        cachedNotifications = parsed.map((storedItem) => {
           const initial = INITIAL_NOTIFICATIONS.find((init) => init.id === storedItem.id);
           return {
             ...storedItem,
@@ -95,46 +102,56 @@ function loadStoredNotifications(): NotificationItem[] {
             time_am: initial?.time_am ?? storedItem.time_am,
           };
         });
+        return cachedNotifications;
       }
     }
   } catch {
     // fallback
   }
-  return INITIAL_NOTIFICATIONS;
+  cachedNotifications = INITIAL_NOTIFICATIONS;
+  return cachedNotifications;
 }
 
 function saveStoredNotifications(items: NotificationItem[]) {
+  const raw = JSON.stringify(items);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(STORAGE_KEY, raw);
   } catch {
     // ignore
   }
+  cachedRawNotifications = raw;
+  cachedNotifications = items;
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: items }));
 }
 
-export function useNotifications() {
-  // Deterministic first render for SSR; saved read/unread state arrives on mount.
-  const [items, setItems] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+function subscribeNotifications(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const handler = () => {
+    cachedRawNotifications = null;
+    callback();
+  };
+  window.addEventListener(CHANGE_EVENT, handler);
+  window.addEventListener("storage", handler);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, handler);
+    window.removeEventListener("storage", handler);
+  };
+}
 
-  useEffect(() => {
-    setItems(loadStoredNotifications());
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<NotificationItem[]>).detail;
-      if (detail) setItems(detail);
-    };
-    window.addEventListener(CHANGE_EVENT, handler);
-    return () => window.removeEventListener(CHANGE_EVENT, handler);
-  }, []);
+export function useNotifications() {
+  const items = useSyncExternalStore(
+    subscribeNotifications,
+    loadStoredNotifications,
+    () => INITIAL_NOTIFICATIONS,
+  );
 
   const markAllRead = () => {
     const updated = items.map((n) => ({ ...n, read: true }));
-    setItems(updated);
     saveStoredNotifications(updated);
   };
 
   const markRead = (id: string) => {
     const updated = items.map((n) => (n.id === id ? { ...n, read: true } : n));
-    setItems(updated);
     saveStoredNotifications(updated);
   };
 

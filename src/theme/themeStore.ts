@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 
 export type Theme = "light" | "dark";
@@ -192,37 +192,23 @@ export function setThemeWithTransition(next: Theme, origin?: ThemeOrigin) {
   }, 780);
 }
 
+function subscribeTheme(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(CHANGE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
 /** Shared reactive theme hook. */
 export function useTheme() {
-  // The pre-paint script has already put the right palette on <html>; React
-  // starts from "light" so SSR and hydration match, then syncs on mount.
-  const [theme, setThemeState] = useState<Theme>("light");
-
-  useEffect(() => {
-    const stored = readStoredTheme();
-    setThemeState(stored);
-    applyDomTheme(stored);
-
-    const onChange = (event: Event) => {
-      const next = (event as CustomEvent<Theme>).detail;
-      if (next === "dark" || next === "light") {
-        setThemeState(next);
-      }
-    };
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) {
-        const next = readStoredTheme();
-        applyDomTheme(next);
-        setThemeState(next);
-      }
-    };
-    window.addEventListener(CHANGE_EVENT, onChange);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(CHANGE_EVENT, onChange);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+  const theme = useSyncExternalStore(
+    subscribeTheme,
+    readStoredTheme,
+    () => "light" as Theme,
+  );
 
   const setTheme = (next: Theme, origin?: ThemeOrigin) => {
     setThemeWithTransition(next, origin);

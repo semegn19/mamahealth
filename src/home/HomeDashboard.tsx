@@ -380,7 +380,7 @@ function CalendarSection({ now }: { now: Date }) {
       className="home-glass rounded-[28px] p-5"
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-[19px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
+        <h3 suppressHydrationWarning className="text-[19px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
           {heading}
         </h3>
         <div className="flex gap-2">
@@ -430,6 +430,7 @@ function CalendarSection({ now }: { now: Date }) {
                 {dayLetters[i]}
               </span>
               <span
+                suppressHydrationWarning
                 className={`text-[16px] font-semibold ${
                   isSel
                     ? "text-[#3b3226] dark:text-[#231b12]"

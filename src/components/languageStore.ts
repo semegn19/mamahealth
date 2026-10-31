@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import en from "../locales/en.json";
 import am from "../locales/am.json";
 
@@ -49,28 +49,24 @@ function writeLanguage(code: LanguageCode) {
   window.dispatchEvent(new CustomEvent<LanguageCode>(CHANGE_EVENT, { detail: code }));
 }
 
-export function useLanguage() {
-  const [language, setLanguageState] = useState<LanguageCode>("en");
+function subscribeLanguage(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(CHANGE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
 
-  useEffect(() => {
-    setLanguageState(readLanguage());
-    const onChange = (event: Event) => {
-      const next = (event as CustomEvent<LanguageCode>).detail;
-      if (next === "en" || next === "am") setLanguageState(next);
-    };
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) setLanguageState(readLanguage());
-    };
-    window.addEventListener(CHANGE_EVENT, onChange);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(CHANGE_EVENT, onChange);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+export function useLanguage() {
+  const language = useSyncExternalStore(
+    subscribeLanguage,
+    readLanguage,
+    () => "en" as LanguageCode,
+  );
 
   const setLanguage = (next: LanguageCode) => {
-    setLanguageState(next);
     writeLanguage(next);
   };
 

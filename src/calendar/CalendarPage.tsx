@@ -21,9 +21,11 @@ import {
   dateKey,
   DUE_DATE_KEY,
   fromDateKey,
+  initialDueDate,
   ITEMS_KEY,
   loadDueDate,
   loadItems,
+  starterItems,
   startOfWeek,
   type CalendarItem,
 } from "./calendarData";
@@ -371,10 +373,11 @@ export function CalendarPage() {
   const [visibleMonth, setVisibleMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
-  const [items, setItems] = useState<CalendarItem[]>(() => loadItems(today));
-  const [dueDate, setDueDate] = useState(() => loadDueDate(today));
+  const [items, setItems] = useState<CalendarItem[]>(() => starterItems(today));
+  const [dueDate, setDueDate] = useState(() => initialDueDate(today));
+  const [isHydrated, setIsHydrated] = useState(false);
   const [editingDueDate, setEditingDueDate] = useState(false);
-  const [dueDraft, setDueDraft] = useState(dueDate);
+  const [dueDraft, setDueDraft] = useState(() => initialDueDate(today));
   const [editor, setEditor] = useState<{ key: string; item: CalendarItem | null } | null>(null);
   const [message, setMessage] = useState("");
   const firedRef = useRef(new Set<string>());
@@ -382,20 +385,31 @@ export function CalendarPage() {
   const weekdays = isAmharic ? WEEKDAYS_AM : WEEKDAYS_EN;
 
   useEffect(() => {
+    const loadedItems = loadItems(today);
+    const loadedDue = loadDueDate(today);
+    setItems(loadedItems);
+    setDueDate(loadedDue);
+    setDueDraft(loadedDue);
+    setIsHydrated(true);
+  }, [today]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
     try {
       localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
     } catch {
       /* In-memory editing still works. */
     }
-  }, [items]);
+  }, [items, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     try {
       localStorage.setItem(DUE_DATE_KEY, dueDate);
     } catch {
       /* In-memory editing still works. */
     }
-  }, [dueDate]);
+  }, [dueDate, isHydrated]);
 
   useEffect(() => {
     if (!message) return;

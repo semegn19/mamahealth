@@ -37,7 +37,7 @@ export function HomeTopBar({ now = new Date() }: { now?: Date }) {
           className="h-12 w-12 rounded-full object-cover ring-2 ring-white dark:ring-[#e5be79]/35"
         />
         <div>
-          <p className="text-[13px] text-[#85735a] dark:text-[#9c8b72]">{getGreeting(now)}</p>
+          <p suppressHydrationWarning className="text-[13px] text-[#85735a] dark:text-[#9c8b72]">{getGreeting(now)}</p>
           <p className="text-[17px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
             {profile.name}
           </p>
