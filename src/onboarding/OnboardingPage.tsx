@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Baby,
+  Building2,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
   Heart,
   Info,
@@ -25,6 +27,7 @@ import {
   CONDITION_OPTIONS,
   daysInEthiopianMonth,
   daysInGregorianMonth,
+  ETHIOPIAN_HOSPITALS,
   ETHIOPIAN_MONTHS,
   formatEthiopian,
   formatGregorian,
@@ -42,6 +45,8 @@ import {
   type Residence,
 } from "./onboardingStore";
 import { useRouter } from "next/navigation";
+import { usersApi, type OnboardingSubmitPayload } from "../api";
+import { useProfile } from "../settings/profileStore";
 
 type Stage = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type Screen = "welcome" | Stage | "complete";
@@ -474,9 +479,11 @@ function OnboardingComplete({ onDone }: { onDone: () => void }) {
 export function OnboardingPage() {
   const router = useRouter();
   const { t, isAmharic } = useTranslation();
+  const { profile, update: updateProfile } = useProfile();
 
   const [data, setData] = useState<OnboardingData>(EMPTY_ONBOARDING);
   const [hydrated, setHydrated] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [screen, setScreen] = useState<Screen>("welcome");
   const [stage, setStage] = useState<Stage>(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -661,7 +668,76 @@ export function OnboardingPage() {
     finishOnboarding();
   };
 
-  const finishOnboarding = () => {
+  const finishOnboarding = async () => {
+    setSubmitting(true);
+    let lnmpIso: string | null = null;
+    if (data.dating === "lmp" && data.lmpDay && data.lmpMonth && data.lmpYear) {
+      try {
+        const gregorianDate = lmpToGregorian(
+          data.calendar,
+          parseInt(data.lmpDay, 10),
+          parseInt(data.lmpMonth, 10),
+          parseInt(data.lmpYear, 10),
+        );
+        const y = gregorianDate.getFullYear();
+        const m = String(gregorianDate.getMonth() + 1).padStart(2, "0");
+        const d = String(gregorianDate.getDate()).padStart(2, "0");
+        lnmpIso = `${y}-${m}-${d}`;
+      } catch {
+        // Fallback
+      }
+    }
+
+    const hospitalChoice =
+      data.hospital === "Other / Health Center"
+        ? (data.customHospital?.trim() || data.hospital)
+        : (data.hospital || null);
+
+    const allConditions = Array.from(new Set([...data.conditions, ...data.customConditions]));
+    const primaryCustom = data.customConditions[0] || null;
+
+    const payload: OnboardingSubmitPayload = {
+      name: profile.name || null,
+      age: data.age ? parseInt(data.age, 10) : null,
+      area: data.residence ? (data.residence.toLowerCase() as "urban" | "rural") : null,
+      hospital: hospitalChoice,
+      pregnancy_counting_method: data.dating === "lmp" ? "lnmp" : "manual",
+      lnmp_date: lnmpIso,
+      manual_gestational_weeks: data.dating === "known" && data.knownWeeks ? parseInt(data.knownWeeks, 10) : null,
+      manual_gestational_days: data.dating === "known" && data.knownDays ? parseInt(data.knownDays, 10) : 0,
+      total_pregnancies: data.totalPregnancies,
+      live_births: data.liveBirths,
+      had_c_section: data.hadCesarean,
+      child_passed_away: data.hadStillbirth,
+      malaria_endemic_area: data.malariaArea,
+      past_pregnancy_complications: [...data.complications, ...data.customComplications],
+      known_medical_conditions: allConditions,
+      custom_medical_condition: primaryCustom,
+      current_medications: data.takesMedications && data.medications.length ? data.medications.join(", ") : null,
+      supplements: data.takesSupplements ? data.supplementChoices : [],
+    };
+
+    try {
+      const result = await usersApi.submitOnboarding(payload);
+      if (result) {
+        updateProfile({
+          name: result.name || profile.name,
+          nextAncDate: result.appointment?.appointment_date || profile.nextAncDate,
+          supplements: result.supplements?.length
+            ? result.supplements.map((s) => ({
+                id: s.id,
+                name: s.name,
+                reminderTime: s.reminder_time ? s.reminder_time.slice(0, 5) : "09:00",
+              }))
+            : profile.supplements,
+        });
+      }
+    } catch {
+      // Local progress is always preserved safely even if offline
+    } finally {
+      setSubmitting(false);
+    }
+
     const finished = { ...data, completed: true };
     setData(finished);
     saveOnboarding(finished);
@@ -937,6 +1013,54 @@ export function OnboardingPage() {
                         <p role="alert" className="mt-1.5 text-[12px] text-[#9c3a29] dark:text-[#f08b75]">
                           {errors.residence}
                         </p>
+                      )}
+                    </div>
+
+                    {/* Preferred Hospital / Health Center */}
+                    <div>
+                      <label
+                        htmlFor="hospital"
+                        className="flex items-center gap-1.5 text-[14.5px] font-medium text-[#3b3226] dark:text-[#f5ede0]"
+                      >
+                        <Building2
+                          size={15}
+                          strokeWidth={1.9}
+                          className="text-[#8d6a2a] dark:text-[#e5be79]"
+                          aria-hidden="true"
+                        />
+                        {t("onboarding.hospital")}
+                      </label>
+                      <p className="mt-0.5 text-[12.5px] text-[#6f6149] dark:text-[#b9a88e]">
+                        {t("onboarding.hospitalHint")}
+                      </p>
+                      <div className="relative mt-2">
+                        <select
+                          id="hospital"
+                          value={data.hospital}
+                          onChange={(e) => update({ hospital: e.target.value })}
+                          className="min-h-12 w-full appearance-none rounded-2xl border border-[#d8c6a4] bg-white/85 px-4 py-3 pr-10 text-[14.5px] text-[#3b3226] outline-none transition-colors focus:border-[#a87a3d] focus:bg-white dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:focus:border-[#e5be79] dark:focus:bg-[#1d1711]"
+                        >
+                          <option value="">{t("onboarding.hospitalPlaceholder")}</option>
+                          {ETHIOPIAN_HOSPITALS.map((hosp) => (
+                            <option key={hosp} value={hosp}>
+                              {hosp}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#85735a] dark:text-[#9c8b72]">
+                          <ChevronDown size={17} strokeWidth={1.8} />
+                        </span>
+                      </div>
+                      {data.hospital === "Other / Health Center" && (
+                        <div className="mt-2.5">
+                          <input
+                            type="text"
+                            value={data.customHospital}
+                            onChange={(e) => update({ customHospital: e.target.value })}
+                            placeholder={t("onboarding.hospitalOther")}
+                            className="min-h-11 w-full rounded-2xl border border-[#d8c6a4] bg-white/85 px-4 py-2.5 text-[14px] text-[#3b3226] outline-none transition-colors placeholder:text-[#b3a48c] focus:border-[#a87a3d] focus:bg-white dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79] dark:focus:bg-[#1d1711]"
+                          />
+                        </div>
                       )}
                     </div>
 

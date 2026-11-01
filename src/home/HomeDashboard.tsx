@@ -28,6 +28,7 @@ import { ShareReportDialog } from "../report/ShareReportDialog";
 import { REPORT_ARCHIVE } from "../report/reportCatalog";
 import { QuickLogDialog } from "../logs/QuickLogDialog";
 import { mockAgendaFor as agendaFor } from "../mock/calendar";
+import { usersApi, type CurrentPregnancyStatus } from "../api";
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -145,8 +146,17 @@ function ProgressRing({ value, max, label }: { value: number; max: number; label
 export { BottomNav, HomeTopBar };
 export type { NavKey };
 
-function TopSection({ now }: { now: Date }) {
+function TopSection({ now, pregnancy }: { now: Date; pregnancy?: CurrentPregnancyStatus | null }) {
   const { t } = useTranslation();
+
+  const currentWeek = pregnancy?.gestational_age_weeks ?? 24;
+  const trimesterKey = pregnancy?.trimester;
+  const trimesterLabel =
+    trimesterKey === "first_trimester"
+      ? (t("home.firstTrimester") || "First trimester")
+      : trimesterKey === "third_trimester"
+      ? (t("home.thirdTrimester") || "Third trimester")
+      : t("home.secondTrimester");
 
   return (
     <section aria-label="Overview" className="space-y-4">
@@ -163,7 +173,7 @@ function TopSection({ now }: { now: Date }) {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/60 dark:bg-[#e5be79]/18">
                 <Sparkles size={14} strokeWidth={1.8} />
               </span>
-              {t("home.secondTrimester")}
+              {trimesterLabel}
             </span>
             <h2 className="mt-3 text-[26px] font-medium leading-[1.12] tracking-[-0.02em] text-[#3b3226] dark:text-[#f5ede0]">
               {t("home.progressTitle")}
@@ -172,7 +182,7 @@ function TopSection({ now }: { now: Date }) {
               {t("home.babySize")}
             </p>
           </div>
-          <ProgressRing value={24} max={40} label={t("home.weeks")} />
+          <ProgressRing value={currentWeek} max={40} label={t("home.weeks")} />
         </div>
       </div>
     </section>
@@ -456,6 +466,22 @@ function CalendarSection({ now }: { now: Date }) {
 
 export function HomeDashboard() {
   const now = useMemo(() => new Date(), []);
+  const [pregnancy, setPregnancy] = useState<CurrentPregnancyStatus | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    usersApi
+      .getMe()
+      .then((me) => {
+        if (active && me.current_pregnancy_status) {
+          setPregnancy(me.current_pregnancy_status);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#f3ecdf] text-[#4a3f30] dark:bg-[#15120e] dark:text-[#f0e4ce]">
@@ -470,7 +496,7 @@ export function HomeDashboard() {
       <main className="relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[960px] md:px-8">
         <div className="space-y-4 md:grid md:grid-cols-2 md:gap-5 md:space-y-0">
           <div className="md:col-span-2">
-            <TopSection now={now} />
+            <TopSection now={now} pregnancy={pregnancy} />
           </div>
           <StatsSection now={now} />
           <CalendarSection now={now} />

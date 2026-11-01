@@ -18,6 +18,7 @@ import { useProfile } from "../settings/profileStore";
 import { useTranslation } from "../components/languageStore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { authApi, usersApi, ApiError } from "../api";
 
 /* ------------------------------------------------------------------ */
 /* Lightweight prototype accounts (stored locally, never sent anywhere) */
@@ -193,6 +194,7 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
   const [swap, setSwap] = useState(false);
   const timerRef = useRef<number | null>(null);
 
@@ -218,6 +220,7 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
     if (next === mode) return;
     setSwap(true);
     setErrors({});
+    setVerificationSent(false);
     timerRef.current = window.setTimeout(() => {
       router.push(next === "login" ? "/login" : "/register");
       setPassword("");
@@ -245,44 +248,54 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
     if (!validate()) return;
     setLoading(true);
 
-    timerRef.current = window.setTimeout(() => {
-      const accounts = loadAccounts();
+    timerRef.current = window.setTimeout(async () => {
       const normalisedEmail = email.trim().toLowerCase();
 
       if (mode === "register") {
-        if (accounts.some((account) => account.email === normalisedEmail)) {
+        try {
+          await authApi.signup(normalisedEmail, password);
+          // Store First Name + Last Name in client profile state upon signup (User Decision 2)
+          update({ name: `${firstName.trim()} ${lastName.trim()}`, email: normalisedEmail });
           setLoading(false);
-          setErrors({ email: t("auth.accountExistsError") });
-          return;
+          // Show calm "Verification Email Sent" screen (User Decision 3)
+          setVerificationSent(true);
+        } catch (err: unknown) {
+          setLoading(false);
+          const msg = err instanceof ApiError ? err.message : t("auth.accountExistsError");
+          setErrors({ email: msg });
         }
-        const account: Account = {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: normalisedEmail,
-          password,
-        };
-        saveAccounts([...accounts, account]);
-        update({ name: `${account.firstName} ${account.lastName}`, email: normalisedEmail });
-        timerRef.current = window.setTimeout(() => {
-          router.push("/onboarding");
-        }, 600);
         return;
       }
 
-      const account = accounts.find(
-        (candidate) => candidate.email === normalisedEmail && candidate.password === password,
-      );
-      if (!account) {
+      // Login mode
+      try {
+        await authApi.login(normalisedEmail, password);
+        try {
+          const me = await usersApi.getMe();
+          if (me.name) {
+            update({ name: me.name, email: me.email || normalisedEmail });
+          } else {
+            update({ email: me.email || normalisedEmail });
+          }
+
+          timerRef.current = window.setTimeout(() => {
+            if (!me.onboarding_completed) {
+              router.push("/onboarding");
+            } else {
+              router.push("/splash");
+            }
+          }, 700);
+        } catch {
+          update({ email: normalisedEmail });
+          timerRef.current = window.setTimeout(() => {
+            router.push("/splash");
+          }, 700);
+        }
+      } catch (err: unknown) {
         setLoading(false);
-        setErrors({
-          password: t("auth.invalidCredentialsError"),
-        });
-        return;
+        const msg = err instanceof ApiError ? err.message : t("auth.invalidCredentialsError");
+        setErrors({ password: msg });
       }
-      update({ name: `${account.firstName} ${account.lastName}`, email: account.email });
-      timerRef.current = window.setTimeout(() => {
-        router.push("/splash");
-      }, 700);
     }, 750);
   };
 
@@ -312,30 +325,62 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
         </header>
 
         <div>
-          <div className="mt-9">
-            <h1
-              className={`text-[32px] font-light leading-[1.08] tracking-[-0.035em] text-[#3b3226] transition-all duration-300 dark:text-[#f5ede0] ${
-                swap ? "translate-y-1 opacity-0" : "translate-y-0 opacity-100"
-              }`}
-            >
-              {isRegister ? t("auth.createTitle") : t("auth.signInTitle")}
-            </h1>
-            <p
-              className={`mt-2.5 text-[14.5px] leading-relaxed text-[#6f6149] transition-opacity duration-300 dark:text-[#b9a88e] ${
-                swap ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              {isRegister ? t("auth.createSub") : t("auth.signInSub")}
-            </p>
-          </div>
+          {verificationSent ? (
+            <div className="mt-12 flex flex-col items-center text-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#fdf6e7] p-4 shadow-[0_12px_28px_-12px_rgba(201,163,93,0.5)] dark:border dark:border-[#e5be79]/30 dark:bg-[#2b2217]">
+                <Mail size={36} className="text-[#8d6a2a] dark:text-[#e5be79]" strokeWidth={1.8} />
+              </div>
+              <h1 className="mt-6 text-[28px] font-light tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
+                {t("auth.verifyEmailTitle")}
+              </h1>
+              <p className="mt-3 max-w-[340px] text-[14.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
+                {t("auth.verifyEmailSub").replace("{email}", email.trim())}
+              </p>
+              <div className="mt-8 w-full max-w-[320px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVerificationSent(false);
+                    switchMode("login");
+                  }}
+                  className="group flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#3b3226] px-6 py-3.5 text-[15px] font-medium text-[#fbe7b8] shadow-[0_14px_30px_-16px_rgba(60,45,25,0.7)] transition-colors hover:bg-[#4a3f30] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:shadow-[0_16px_34px_-14px_rgba(229,190,121,0.45)] dark:hover:bg-[#f0cf92]"
+                >
+                  {t("auth.backToSignIn")}
+                  <ArrowRight
+                    size={17}
+                    strokeWidth={2}
+                    className="transition-transform duration-300 group-hover:translate-x-1"
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="mt-9">
+                <h1
+                  className={`text-[32px] font-light leading-[1.08] tracking-[-0.035em] text-[#3b3226] transition-all duration-300 dark:text-[#f5ede0] ${
+                    swap ? "translate-y-1 opacity-0" : "translate-y-0 opacity-100"
+                  }`}
+                >
+                  {isRegister ? t("auth.createTitle") : t("auth.signInTitle")}
+                </h1>
+                <p
+                  className={`mt-2.5 text-[14.5px] leading-relaxed text-[#6f6149] transition-opacity duration-300 dark:text-[#b9a88e] ${
+                    swap ? "opacity-0" : "opacity-100"
+                  }`}
+                >
+                  {isRegister ? t("auth.createSub") : t("auth.signInSub")}
+                </p>
+              </div>
 
-          <form
-            onSubmit={handleSubmit}
-            noValidate
-            className={`mt-7 transition-all duration-300 ${
-              swap ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
-            }`}
-          >
+              <form
+                onSubmit={handleSubmit}
+                noValidate
+                className={`mt-7 transition-all duration-300 ${
+                  swap ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+                }`}
+              >
             <div className="space-y-4">
               {isRegister && (
                 <div className="grid grid-cols-2 gap-3">
@@ -437,6 +482,8 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
               </Link>
             </p>
           </form>
+          </>
+          )}
 
           <p className="mt-6 flex items-center justify-center gap-2 text-center text-[12px] leading-relaxed text-[#9b8a6f] dark:text-[#9c8b72]">
             <Heart size={12} strokeWidth={2} aria-hidden="true" />

@@ -460,7 +460,10 @@
     "passwordError": "Please enter a password.",
     "passwordLengthError": "Use at least 8 characters.",
     "accountExistsError": "An account with this email already exists. Try signing in.",
-    "invalidCredentialsError": "We couldn't match that email and password. Try again or create an account."
+    "invalidCredentialsError": "We couldn't match that email and password. Try again or create an account.",
+    "verifyEmailTitle": "Verify your email",
+    "verifyEmailSub": "We've sent a verification link to {email}. Please check your inbox and tap the link to activate your account.",
+    "backToSignIn": "Back to sign in"
   },
   "splash": {
     "msg1": "Preparing your space…",
@@ -556,6 +559,10 @@
       "Iron & Folic Acid (IFA)": "Iron & Folic Acid (IFA)",
       "Calcium Supplement": "Calcium Supplement",
       "Multiple Micronutrients (MMN)": "Multiple Micronutrients (MMN)"
-    }
+    },
+    "hospital": "Preferred hospital or health center",
+    "hospitalPlaceholder": "Select hospital or health center (optional)",
+    "hospitalOther": "Enter hospital or clinic name",
+    "hospitalHint": "Connects your summaries and ANC appointments with your facility."
   }
 }

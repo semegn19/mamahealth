@@ -10,6 +10,8 @@ export type CalendarSystem = "gregorian" | "ethiopian";
 export type OnboardingData = {
   age: string;
   residence: Residence | "";
+  hospital: string;
+  customHospital: string;
   totalPregnancies: number;
   liveBirths: number;
   dating: DatingMode;
@@ -43,6 +45,8 @@ const LEGACY_KEY = "aurelia-onboarding-v1";
 export const EMPTY_ONBOARDING: OnboardingData = {
   age: "",
   residence: "Urban",
+  hospital: "",
+  customHospital: "",
   totalPregnancies: 1,
   liveBirths: 0,
   dating: "lmp",
@@ -86,6 +90,17 @@ export const SUPPLEMENT_CHOICE_OPTIONS = [
   "Multiple Micronutrients (MMN)",
 ];
 
+export const ETHIOPIAN_HOSPITALS = [
+  "Tikur Anbessa Specialized Hospital (Black Lion)",
+  "Gandhi Memorial Hospital",
+  "St. Paul's Hospital Millennium Medical College",
+  "Zewditu Memorial Hospital",
+  "Tirunesh Beijing General Hospital",
+  "Yekatit 12 Hospital Medical College",
+  "Ras Desta Damtew Memorial Hospital",
+  "Other / Health Center",
+];
+
 export function loadOnboarding(): OnboardingData {
   try {
     const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
@@ -94,6 +109,8 @@ export function loadOnboarding(): OnboardingData {
       return {
         ...EMPTY_ONBOARDING,
         ...parsed,
+        hospital: typeof parsed.hospital === "string" ? parsed.hospital : "",
+        customHospital: typeof parsed.customHospital === "string" ? parsed.customHospital : "",
         calendar:
           parsed.calendar === "ethiopian" || parsed.calendar === "gregorian"
             ? parsed.calendar

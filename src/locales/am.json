@@ -460,7 +460,10 @@
     "passwordError": "እባክዎ የይለፍ ቃል ያስገቡ።",
     "passwordLengthError": "ቢያንስ 8 ፊደላት ወይም ቁጥሮች ይጠቀሙ።",
     "accountExistsError": "በዚህ ኢሜይል የተመዘገበ አካውንት አስቀድሞ አለ። መግባት ይሞክሩ።",
-    "invalidCredentialsError": "ኢሜይሉ እና የይለፍ ቃሉ አልተዛመደም። እንደገና ይሞክሩ ወይም አዲስ አካውንት ይፍጠሩ።"
+    "invalidCredentialsError": "ኢሜይሉ እና የይለፍ ቃሉ አልተዛመደም። እንደገና ይሞክሩ ወይም አዲስ አካውንት ይፍጠሩ።",
+    "verifyEmailTitle": "ኢሜይልዎን ያረጋግጡ",
+    "verifyEmailSub": "ወደ {email} የማረጋገጫ ሊንክ ልከናል። እባክዎ ኢሜይልዎን ከፍተው ሊንኩን በመንካት አካውንትዎን ያንቁ።",
+    "backToSignIn": "ወደ መግቢያ ተመለስ"
   },
   "splash": {
     "msg1": "ቦታዎን በማዘጋጀት ላይ…",
@@ -556,6 +559,10 @@
       "Iron & Folic Acid (IFA)": "የብረት እና ፎሊክ አሲድ እንክብል (IFA)",
       "Calcium Supplement": "የካልሲየም እንክብል",
       "Multiple Micronutrients (MMN)": "የተለያዩ ጥቃቅን ንጥረ ነገሮች (MMN)"
-    }
+    },
+    "hospital": "የሚመርጡት ሆስፒታል ወይም ጤና ጣቢያ",
+    "hospitalPlaceholder": "ሆስፒታል ወይም ጤና ጣቢያ ይምረጡ (አስገዳጅ ያልሆነ)",
+    "hospitalOther": "የሆስፒታሉን ወይም ጤና ጣቢያውን ስም ያስገቡ",
+    "hospitalHint": "የክትትል ማጠቃለያዎችን እና የህክምና ቀጠሮዎችን ከተቋሙ ጋር ለማስተሳሰር ይጠቅማል።"
   }
 }
