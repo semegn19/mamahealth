@@ -27,6 +27,7 @@ import { useNotifications } from "../notifications/notificationsData";
 import { ShareReportDialog } from "../report/ShareReportDialog";
 import { REPORT_ARCHIVE } from "../report/reportCatalog";
 import { QuickLogDialog } from "../logs/QuickLogDialog";
+import { mockAgendaFor as agendaFor } from "../mock/calendar";
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -57,21 +58,6 @@ function sameDay(a: Date, b: Date) {
   );
 }
 
-/** A small, predictable agenda so the calendar feels alive in the prototype. */
-function agendaFor(date: Date) {
-  switch (date.getDay()) {
-    case 1:
-      return { title: "Morning check-in reminder", time: "08:00" };
-    case 3:
-      return { title: "Midwife check-in", time: "10:30" };
-    case 5:
-      return { title: "Glucose screening", time: "09:15" };
-    case 6:
-      return { title: "Prenatal yoga", time: "18:00" };
-    default:
-      return null;
-  }
-}
 
 /* ------------------------------------------------------------------ */
 /* Pieces                                                              */

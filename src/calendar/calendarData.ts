@@ -28,56 +28,14 @@ export function startOfWeek(date: Date) {
   return result;
 }
 
+import { mockInitialDueDate, mockStarterCalendarItems } from "../mock/calendar";
+
 export function starterItems(today: Date): CalendarItem[] {
-  const next = (offset: number) => {
-    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    date.setDate(date.getDate() + offset);
-    return dateKey(date);
-  };
-  return [
-    {
-      id: "sample-1",
-      title: "Midwife appointment",
-      title_am: "የአዋላጅ ቀጠሮ",
-      type: "event",
-      date: next(0),
-      time: "10:30",
-      reminderAt: "",
-    },
-    {
-      id: "sample-2",
-      title: "Take prenatal vitamins",
-      title_am: "የቅድመ ወሊድ ቫይታሚን መውሰድ",
-      type: "task",
-      date: next(1),
-      time: "08:00",
-      reminderAt: "",
-    },
-    {
-      id: "sample-3",
-      title: "Blood pressure check",
-      title_am: "የደም ግፊት ምርመራ",
-      type: "task",
-      date: next(3),
-      time: "09:00",
-      reminderAt: "",
-    },
-    {
-      id: "sample-4",
-      title: "Prenatal class",
-      title_am: "የቅድመ ወሊድ ትምህርት",
-      type: "event",
-      date: next(5),
-      time: "16:00",
-      reminderAt: "",
-    },
-  ];
+  return mockStarterCalendarItems(today);
 }
 
-export function initialDueDate(today: Date) {
-  const due = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  due.setDate(due.getDate() + 84);
-  return dateKey(due);
+export function initialDueDate(today: Date): string {
+  return mockInitialDueDate(today);
 }
 
 export function loadItems(today: Date): CalendarItem[] {

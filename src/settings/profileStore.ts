@@ -23,15 +23,9 @@ const KEY = "mama-health-profile-v1";
 const LEGACY_KEY = "aurelia-profile-v1";
 const CHANGE_EVENT = "mama-health-profile-change";
 
-export const DEFAULT_PROFILE: Profile = {
-  name: "Amara Bennett",
-  email: "amara.bennett@example.com",
-  nextAncDate: "2025-10-09",
-  supplements: [
-    { id: "iron", name: "Iron", reminderTime: "08:00" },
-    { id: "folic-acid", name: "Folic acid", reminderTime: "08:00" },
-  ],
-};
+import { MOCK_DEFAULT_PROFILE } from "../mock/profile";
+
+export const DEFAULT_PROFILE: Profile = MOCK_DEFAULT_PROFILE;
 
 let cachedRawProfile: string | null = null;
 let cachedProfile: Profile = DEFAULT_PROFILE;

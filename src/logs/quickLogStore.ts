@@ -110,12 +110,18 @@ function subscribeFood(callback: () => void) {
   };
 }
 
+const EMPTY_SUPPLEMENTS: SupplementLog[] = [];
+const getSupplementsServerSnapshot = () => EMPTY_SUPPLEMENTS;
+
+const EMPTY_FOOD: FoodLog[] = [];
+const getFoodServerSnapshot = () => EMPTY_FOOD;
+
 /** Saved-by-hand supplement answers for today. Shared across the app. */
 export function useManualSupplements() {
   const items = useSyncExternalStore(
     subscribeSupplements,
     readSupplements,
-    () => [],
+    getSupplementsServerSnapshot,
   );
 
   const save = (next: SupplementLog[]) => {
@@ -138,7 +144,7 @@ export function useManualFood() {
   const items = useSyncExternalStore(
     subscribeFood,
     readFood,
-    () => [],
+    getFoodServerSnapshot,
   );
 
   const save = (groups: number[]) => {

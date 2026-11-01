@@ -20,46 +20,14 @@ import Link from "next/link";
 import { useTranslation } from "../components/languageStore";
 import { useRouter } from "next/navigation";
 import { VoiceIris, type OrbMode } from "./VoiceIris";
-
-/* ------------------------------------------------------------------ */
-/* Sample check-in conversation (the prototype "hears" these)          */
-/* ------------------------------------------------------------------ */
-
-const UTTERANCES = [
-  {
-    prompt_en: "How are you feeling today?",
-    prompt_am: "ዛሬ እንዴት ነዎት?",
-    answer_en: "A little tired, with a mild headache after lunch.",
-    answer_am: "ትንሽ ድካም ተሰምቶኛል፣ ከምሳ በኋላም ትንሽ ራስ ምታት ነበረኝ።",
-  },
-  {
-    prompt_en: "Any symptoms since yesterday?",
-    prompt_am: "ከትላንት ወዲህ የተሰማዎት የጤና ለውጥ አለ?",
-    answer_en: "Some nausea in the mornings, but it has eased off.",
-    answer_am: "ጠዋት ላይ ትንሽ ማቅለሽለሽ ነበረኝ ግን አሁን ለቆኛል።",
-  },
-  {
-    prompt_en: "What did you eat today?",
-    prompt_am: "ዛሬ ምን ተመገቡ?",
-    answer_en: "Oatmeal for breakfast, a chicken salad, and a glass of milk.",
-    answer_am: "ጠዋት አጃ ከወተት ጋር፣ ለምሳ የዶሮ ሰላጣ እና አንድ ብርጭቆ ወተት።",
-  },
-];
+import {
+  MOCK_SIMULATED_DANGER_SIGN as SIMULATED_DANGER_SIGN,
+  MOCK_UTTERANCES as UTTERANCES,
+} from "../mock/voiceCheckin";
 
 type Phase = "asking" | "listening" | "processing" | "review" | "editing" | "confirming";
 
 type Response = CheckinEntry;
-
-/**
- * Prototype-only simulated finding. A real build would derive this from the
- * check-in answers and triage rules, then route the user to urgent care.
- */
-const SIMULATED_DANGER_SIGN = {
-  name: "Severe headache with blurred vision",
-  detail:
-    "You described a headache lasting over 6 hours that rest hasn't eased, together with blurred vision.",
-  severity: "Critical" as const,
-};
 
 /* ------------------------------------------------------------------ */
 /* Voice iris aperture (replaces legacy multi-disc orb)               */

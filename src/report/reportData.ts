@@ -39,58 +39,14 @@ export type DayRecord = {
   supplement: boolean;
 };
 
-/** Small seeded PRNG so the month looks organic but never changes. */
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import {
+  MOCK_FOOD_ITEM_COUNTS as FOOD_ITEM_COUNTS,
+  MOCK_FOOD_ITEMS as FOOD_ITEMS,
+  MOCK_MONTH,
+  MOCK_PERIOD as PERIOD,
+} from "../mock/reports";
 
-function buildMonth(): DayRecord[] {
-  const rand = mulberry32(20260914);
-  const days: DayRecord[] = [];
-  // Reporting period: 1–30 September 2025.
-  for (let day = 1; day <= 30; day++) {
-    const date = new Date(2025, 8, day);
-    const recorded = day !== 4 && day !== 17 && day !== 26 && rand() > 0.12;
-
-    const symptoms: DayRecord["symptoms"] = [];
-    if (recorded) {
-      const count = Math.floor(rand() * 3) + (day % 7 === 0 ? 1 : 0);
-      const pool = [...SYMPTOMS];
-      for (let i = 0; i < count && pool.length; i++) {
-        const pick = pool.splice(Math.floor(rand() * pool.length), 1)[0];
-        symptoms.push({ name: pick, severity: (Math.floor(rand() * 3) + 1) as Severity });
-      }
-    }
-
-    const foodGroups: number[] = [];
-    if (recorded) {
-      // Early days of the month show a narrower diet that widens later.
-      const coverage = Math.min(5, 2 + Math.floor(rand() * 3) + (day > 12 ? 1 : 0));
-      const pool = [0, 1, 2, 3, 4];
-      for (let i = 0; i < coverage; i++) {
-        foodGroups.push(...pool.splice(Math.floor(rand() * pool.length), 1));
-      }
-    }
-
-    days.push({
-      date,
-      day,
-      recorded,
-      symptoms,
-      foodGroups: foodGroups.sort((a, b) => a - b),
-      supplement: recorded ? rand() > 0.22 : false,
-    });
-  }
-  return days;
-}
-
-export const MONTH: DayRecord[] = buildMonth();
+export const MONTH: DayRecord[] = MOCK_MONTH;
 
 /* ------------------------------------------------------------------ */
 /* Derived aggregates                                                   */
@@ -193,43 +149,4 @@ export const CALENDAR_CELLS: (DayRecord | null)[] = (() => {
   return [...Array.from({ length: lead }, () => null), ...MONTH];
 })();
 
-export const PERIOD = {
-  label: "September 2025",
-  appointment: "3rd appointment",
-  displayRange: "Thu 9 Oct to Wed Nov 8",
-  generatedAt: "November 7, 2025  10:30 pm",
-  clinician: "Dr. Naomi Adeyemi",
-};
-
-/** Typical foods logged inside each group during the month. */
-export const FOOD_ITEMS: { name: string; items: string[] }[] = [
-  { name: "Grains", items: ["Oats", "Rice", "Injera", "Wholegrain bread", "Quinoa"] },
-  { name: "Protein", items: ["Lentils", "Eggs", "Chicken", "Fish", "Beans"] },
-  { name: "Dairy", items: ["Milk", "Yogurt", "Cheese"] },
-  { name: "Fruit", items: ["Banana", "Mango", "Orange", "Apple", "Berries"] },
-  { name: "Veg", items: ["Spinach", "Kale", "Carrots", "Tomatoes", "Broccoli"] },
-];
-
-/**
- * How many times each food was logged. Seeded separately so MONTH stays stable.
- * Counts only include foods that were actually eaten.
- */
-export const FOOD_ITEM_COUNTS: Record<string, { name: string; times: number }[]> = (() => {
-  const rand = mulberry32(20260988);
-  const result: Record<string, { name: string; times: number }[]> = {};
-
-  FOOD_ITEMS.forEach((group, groupIndex) => {
-    const days = MONTH.filter((d) => d.foodGroups.includes(groupIndex)).length;
-    const rows = group.items
-      .map((name, i) => {
-        // Earlier items in the list are eaten more often; a few may be rare.
-        const weight = 1 - i * 0.12;
-        const times = Math.max(1, Math.round(days * (0.35 + rand() * 0.55) * weight));
-        return { name, times };
-      })
-      .sort((a, b) => b.times - a.times);
-    result[group.name] = rows;
-  });
-
-  return result;
-})();
+export { PERIOD, FOOD_ITEMS, FOOD_ITEM_COUNTS };
