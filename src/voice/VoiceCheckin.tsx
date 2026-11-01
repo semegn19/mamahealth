@@ -19,6 +19,7 @@ import { CheckinReportSheet, severityLabel, type CheckinEntry } from "../compone
 import Link from "next/link";
 import { useTranslation } from "../components/languageStore";
 import { useRouter } from "next/navigation";
+import { VoiceIris, type OrbMode } from "./VoiceIris";
 
 /* ------------------------------------------------------------------ */
 /* Sample check-in conversation (the prototype "hears" these)          */
@@ -61,41 +62,11 @@ const SIMULATED_DANGER_SIGN = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Voice orb: soft translucent gold discs orbiting a bright centre     */
+/* Voice iris aperture (replaces legacy multi-disc orb)               */
 /* ------------------------------------------------------------------ */
 
-type OrbMode = "idle" | "speaking" | "listening" | "danger";
-
-function VoiceOrb({ mode }: { mode: OrbMode }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={`voice-orb ${
-        mode === "listening"
-          ? "is-listening"
-          : mode === "speaking"
-            ? "is-speaking"
-            : mode === "danger"
-              ? "is-danger"
-              : ""
-      }`}
-      style={{ width: "min(230px, 28vh)", height: "min(230px, 28vh)" }}
-    >
-      <span className="voice-orb__bloom" />
-      {[0, 1, 2, 3, 4, 5].map((i) => (
-        <span key={i} className="voice-orb__petal">
-          <span className="voice-orb__disc" />
-        </span>
-      ))}
-      <span className="voice-orb__core" />
-      {mode === "danger" && (
-        <span className="danger-core-icon" aria-hidden="true">
-          <AlertTriangle size={42} strokeWidth={2.1} />
-        </span>
-      )}
-    </div>
-  );
-}
+// VoiceIris component handles the iris aperture animation, themed in warm gold
+// and responding dynamically to idle, speaking, listening, and danger states.
 
 /* ------------------------------------------------------------------ */
 /* Animated words: the question types itself in, word by word          */
@@ -228,6 +199,8 @@ function ReviewCard({
   locked,
   saved,
   isAmharic,
+  answering = false,
+  onAnswerDone,
 }: {
   draft: string;
   editing: boolean;
@@ -237,6 +210,8 @@ function ReviewCard({
   locked: boolean;
   saved: boolean;
   isAmharic?: boolean;
+  answering?: boolean;
+  onAnswerDone?: () => void;
 }) {
   return (
     <div className="review-in mt-6 w-full text-center">
@@ -259,9 +234,18 @@ function ReviewCard({
         </div>
       ) : (
         <div>
-          <p className="text-[17px] font-medium leading-[1.45] text-[#3b3226] dark:text-[#f5ede0]">
-            {draft}
-          </p>
+          {answering ? (
+            <AnimatedWords
+              text={draft}
+              className="text-[17px] font-medium leading-[1.45] text-[#3b3226] dark:text-[#f5ede0]"
+              wordDelay={85}
+              onDone={onAnswerDone}
+            />
+          ) : (
+            <p className="text-[17px] font-medium leading-[1.45] text-[#3b3226] dark:text-[#f5ede0]">
+              {draft}
+            </p>
+          )}
           <div className="mt-2 flex min-h-6 items-center justify-center">
             {saved ? (
               <span
@@ -347,6 +331,8 @@ export function VoiceCheckin() {
   const [dangerSimulated, setDangerSimulated] = useState(false);
   /** True while the question text is animating in — i.e. the AI is speaking. */
   const [speaking, setSpeaking] = useState(true);
+  /** True while the answer is processing or the transcribed answer text is typing in. */
+  const [answering, setAnswering] = useState(false);
   const timers = useRef<number[]>([]);
 
   const completed = questionIndex >= UTTERANCES.length;
@@ -362,6 +348,7 @@ export function VoiceCheckin() {
   // A new question means the AI starts speaking it again.
   useEffect(() => {
     setSpeaking(true);
+    setAnswering(false);
   }, [questionIndex]);
 
   const orbMode: OrbMode =
@@ -372,6 +359,18 @@ export function VoiceCheckin() {
         : speaking && !completed && !leaving
           ? "speaking"
           : "idle";
+
+  /**
+   * The iris animation only runs when:
+   * 1. The question text is animating on screen (AI speaking)
+   * 2. In the "listening" state (user recording)
+   * 3. When it answers (processing speech & typing out the answer)
+   * Otherwise, the iris rests still at its graceful geometric aperture.
+   */
+  const isAnimating =
+    !completed &&
+    !leaving &&
+    ((speaking && phase === "asking") || listening || phase === "processing" || answering);
 
   useEffect(() => {
     router.prefetch("/home");
@@ -398,6 +397,7 @@ export function VoiceCheckin() {
   const startListening = () => {
     if (completed || leaving || phase === "confirming" || phase === "processing") return;
     clearTimers();
+    setAnswering(false);
     setPhase("listening");
   };
 
@@ -405,6 +405,7 @@ export function VoiceCheckin() {
   const stopListening = () => {
     if (phase !== "listening" || completed) return;
     setPhase("processing");
+    setAnswering(true);
     later(() => {
       setDraft(question ? question.answer : "");
       setSeverity(50);
@@ -416,6 +417,7 @@ export function VoiceCheckin() {
   const skipQuestion = () => {
     if (completed || leaving || phase === "confirming") return;
     clearTimers();
+    setAnswering(false);
     if (question) {
       setResponses((items) => [
         ...items,
@@ -435,6 +437,7 @@ export function VoiceCheckin() {
   /** Confirm shows a saved state, then swipes to the next question. */
   const confirmAnswer = () => {
     if (phase !== "review" && phase !== "editing") return;
+    setAnswering(false);
     if (question) {
       setResponses((items) => [
         ...items,
@@ -453,6 +456,7 @@ export function VoiceCheckin() {
   };
 
   const toggleEdit = () => {
+    setAnswering(false);
     if (phase === "review") setPhase("editing");
     else if (phase === "editing") setPhase("review");
   };
@@ -461,6 +465,7 @@ export function VoiceCheckin() {
   const reRecord = () => {
     if (phase !== "review") return;
     clearTimers();
+    setAnswering(false);
     setDraft("");
     setPhase("listening");
   };
@@ -556,7 +561,7 @@ export function VoiceCheckin() {
           {/* In the danger state the orb is hidden — the warning icon sits in its place, with the heading above it. */}
           {!(completed && dangerSimulated) && (
             <div className="mt-4 flex w-full items-center justify-center">
-              <VoiceOrb mode={orbMode} />
+              <VoiceIris mode={orbMode} animating={isAnimating} />
             </div>
           )}
 
@@ -673,6 +678,8 @@ export function VoiceCheckin() {
                       locked={phase === "confirming"}
                       saved={phase === "confirming"}
                       isAmharic={isAmharic}
+                      answering={answering}
+                      onAnswerDone={() => setAnswering(false)}
                     />
                   )}
                 </div>
