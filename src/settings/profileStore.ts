@@ -17,6 +17,8 @@ export type Profile = {
   email: string;
   nextAncDate: string; // "YYYY-MM-DD" or ""
   supplements: Supplement[];
+  hospital?: string;
+  stageSummary?: string;
 };
 
 const KEY = "mama-health-profile-v1";
@@ -47,6 +49,8 @@ function getProfileSnapshot(): Profile {
         supplements: Array.isArray(parsed.supplements)
           ? (parsed.supplements as Supplement[])
           : DEFAULT_PROFILE.supplements,
+        hospital: typeof parsed.hospital === "string" ? parsed.hospital : (DEFAULT_PROFILE.hospital || ""),
+        stageSummary: typeof parsed.stageSummary === "string" ? parsed.stageSummary : (DEFAULT_PROFILE.stageSummary || ""),
       };
       return cachedProfile;
     }

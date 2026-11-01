@@ -103,7 +103,9 @@
     "agendaMorning": "የጥዋት ምዝገባ ማስታወሻ",
     "agendaMidwife": "የአዋላጅ ክትትል",
     "agendaGlucose": "የግሉኮስ ምርመራ",
-    "agendaYoga": "የቅድመ ወሊድ ዮጋ"
+    "agendaYoga": "የቅድመ ወሊድ ዮጋ",
+    "firstTrimester": "1ኛ ትሪሚስተር",
+    "thirdTrimester": "3ኛ ትሪሚስተር"
   },
   "reports": {
     "title": "የቅድመ ወሊድ ሪፖርቶች",
@@ -305,7 +307,14 @@
     "noReminderSet": "ማስታወሻ አልተዘጋጀም",
     "dailyAt": "በየቀኑ በ{time}",
     "noSupplementsYet": "እስካሁን የተመዘገበ እንክብል የለም። የሚወስዷቸውን ያክሉ።",
-    "weekStage": "2ኛ ትሪሚስተር · ሳምንት 24"
+    "weekStage": "2ኛ ትሪሚስተር · ሳምንት 24",
+    "preferredHospital": "ተመራጭ ሆስፒታል / የጤና ጣቢያ",
+    "preferredHospitalDesc": "ለቅድመ ወሊድ ክትትል እና ለወሊድ የመረጡት የህክምና ተቋም።",
+    "editHospital": "ሆስፒታል አስተካክል",
+    "hospitalPlaceholder": "ለምሳሌ፡ ቅዱስ ጳውሎስ ሆስፒታል ሚሊኒየም ሜዲካል ኮሌጅ",
+    "hospitalUpdated": "ሆስፒታል ተዘምኗል",
+    "saveHospital": "ሆስፒታል አስቀምጥ",
+    "enterHospitalError": "እባክዎን ሆስፒታል ወይም ጤና ጣቢያ ያስገቡ።"
   },
   "notifications": {
     "title": "ማሳወቂያዎች",
@@ -405,7 +414,12 @@
     "starterMidwife": "የአዋላጅ ቀጠሮ",
     "starterVitamins": "የቅድመ ወሊድ ቫይታሚን መውሰድ",
     "starterBP": "የደም ግፊት ምርመራ",
-    "starterClass": "የቅድመ ወሊድ ትምህርት"
+    "starterClass": "የቅድመ ወሊድ ትምህርት",
+    "markComplete": "ተጠናቋል ብለው ይመዝግቡ",
+    "markIncomplete": "ያልተጠናቀቀ ብለው ይመዝግቡ",
+    "markAsCompleted": "እንደተጠናቀቀ ምልክት ያድርጉ",
+    "taskCompleted": "ተግባሩ ተጠናቋል",
+    "taskReopened": "ተግባሩ እንደገና ተከፍቷል"
   },
   "quickLog": {
     "title": "በእጅ ይመዝግቡ",

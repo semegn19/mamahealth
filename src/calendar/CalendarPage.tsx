@@ -18,10 +18,13 @@ import { BottomNav } from "@/components/BottomNav";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { ModalDialog } from "@/components/ModalDialog";
 import { useTranslation } from "@/components/languageStore";
+import { calendarApi, getAccessToken, usersApi } from "@/api";
 import {
+  backendToFrontendItem,
   dateKey,
   DUE_DATE_KEY,
   fromDateKey,
+  frontendToBackendPayload,
   initialDueDate,
   ITEMS_KEY,
   loadDueDate,
@@ -62,9 +65,11 @@ function dueCountdown(due: Date, today: Date, t: (path: string, params?: Record<
 function AgendaItems({
   items,
   onEdit,
+  onToggleComplete,
 }: {
   items: CalendarItem[];
   onEdit: (item: CalendarItem) => void;
+  onToggleComplete?: (item: CalendarItem) => void;
 }) {
   const { t, isAmharic } = useTranslation();
 
@@ -75,23 +80,52 @@ function AgendaItems({
         const typeLabel = item.type === "event" ? t("calendar.eventType") : t("calendar.taskType");
 
         return (
-          <li key={item.id}>
+          <li
+            key={item.id}
+            className="group flex min-h-[72px] w-full items-center gap-3 rounded-xl px-1.5 py-3 transition-colors duration-200 hover:bg-white/25 dark:hover:bg-white/6"
+          >
+            {item.type === "task" ? (
+              <button
+                type="button"
+                onClick={() => onToggleComplete?.(item)}
+                aria-label={
+                  item.completed
+                    ? t("calendar.markIncomplete")
+                    : t("calendar.markComplete")
+                }
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79] ${
+                  item.completed
+                    ? "bg-[#6f5a35] text-[#fffaf0] dark:bg-[#e5be79] dark:text-[#231b12]"
+                    : "bg-[#d9ab5e]/15 text-[#7b5b2b] hover:bg-[#d9ab5e]/30 dark:bg-[#e5be79]/16 dark:text-[#e5be79] dark:hover:bg-[#e5be79]/30"
+                }`}
+              >
+                <Check
+                  size={17}
+                  strokeWidth={item.completed ? 2.5 : 1.8}
+                  aria-hidden="true"
+                />
+              </button>
+            ) : (
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d9ab5e]/15 text-[#7b5b2b] dark:bg-[#e5be79]/16 dark:text-[#e5be79]">
+                <CalendarDays size={17} strokeWidth={1.8} aria-hidden="true" />
+              </span>
+            )}
+
             <button
               type="button"
               onClick={() => onEdit(item)}
               aria-label={`${t("common.edit")} ${typeLabel}: ${title}`}
               aria-haspopup="dialog"
-              className="group flex min-h-[72px] w-full items-center gap-3 rounded-xl bg-transparent px-1.5 py-3 text-left transition-colors duration-200 hover:bg-white/25 dark:hover:bg-white/6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79] motion-reduce:transition-none"
+              className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d9ab5e]/15 text-[#7b5b2b] dark:bg-[#e5be79]/16 dark:text-[#e5be79]">
-                {item.type === "event" ? (
-                  <CalendarDays size={17} strokeWidth={1.8} aria-hidden="true" />
-                ) : (
-                  <Check size={17} strokeWidth={1.8} aria-hidden="true" />
-                )}
-              </span>
               <span className="min-w-0 flex-1">
-                <span className="block break-words text-[15px] font-medium leading-snug text-[#3b3226] dark:text-[#f5ede0]">
+                <span
+                  className={`block break-words text-[15px] font-medium leading-snug transition-all ${
+                    item.completed
+                      ? "text-[#85735a] line-through opacity-70 dark:text-[#9c8b72]"
+                      : "text-[#3b3226] dark:text-[#f5ede0]"
+                  }`}
+                >
                   {title}
                 </span>
                 <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-[#6f6149] dark:text-[#b9a88e]">
@@ -143,6 +177,7 @@ function ItemEditor({
         date: selectedDate,
         time: "09:00",
         reminderAt: "",
+        completed: false,
       },
   );
   const [reminderEnabled, setReminderEnabled] = useState(Boolean(initial?.reminderAt));
@@ -172,6 +207,7 @@ function ItemEditor({
       title: draft.title.trim(),
       id: draft.id || crypto.randomUUID(),
       reminderAt: reminderEnabled ? draft.reminderAt : "",
+      completed: draft.type === "task" ? Boolean(draft.completed) : false,
     });
   };
 
@@ -320,6 +356,21 @@ function ItemEditor({
             )}
           </div>
 
+          {draft.type === "task" && (
+            <div className="rounded-[20px] border border-[#e9d5ad] bg-[#fff9ec]/72 p-4 dark:border-[#4b3b28] dark:bg-[#241c14]/85">
+              <label className="flex cursor-pointer items-center gap-3 text-[14px] font-medium text-[#4a3f30] dark:text-[#f0e4ce]">
+                <input
+                  type="checkbox"
+                  checked={Boolean(draft.completed)}
+                  onChange={(event) => update({ completed: event.target.checked })}
+                  className="h-4 w-4 accent-[#b98a3e] dark:accent-[#e5be79]"
+                />
+                <Check size={17} strokeWidth={1.8} aria-hidden="true" />
+                {t("calendar.markAsCompleted")}
+              </label>
+            </div>
+          )}
+
           {error && (
             <p role="alert" className="text-[13px] text-[#9c3a29] dark:text-[#f08b75]">
               {error}
@@ -381,6 +432,45 @@ export function CalendarPage() {
     setDueDate(loadedDue);
     setDueDraft(loadedDue);
     setIsHydrated(true);
+
+    const token = getAccessToken();
+    if (!token) return;
+
+    usersApi
+      .getMe()
+      .then((profile) => {
+        const edd =
+          profile.estimated_due_date ||
+          profile.current_pregnancy_status?.estimated_due_date;
+        if (edd && /^\d{4}-\d{2}-\d{2}$/.test(edd)) {
+          setDueDate(edd);
+          setDueDraft(edd);
+          try {
+            localStorage.setItem(DUE_DATE_KEY, edd);
+          } catch {}
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not sync pregnancy due date:", err);
+      });
+
+    calendarApi
+      .listItems()
+      .then((backendItems) => {
+        if (Array.isArray(backendItems) && backendItems.length > 0) {
+          const mapped = backendItems.map(backendToFrontendItem);
+          setItems(mapped);
+          try {
+            localStorage.setItem(ITEMS_KEY, JSON.stringify(mapped));
+          } catch {}
+        }
+      })
+      .catch((err) => {
+        console.warn(
+          "Could not fetch calendar items from cloud, using offline cache:",
+          err,
+        );
+      });
   }, [today]);
 
   useEffect(() => {
@@ -487,29 +577,122 @@ export function CalendarPage() {
   const selectDate = (date: Date) => setSelected(date);
   const editItem = (item: CalendarItem) => setEditor({ key: item.id, item });
 
-  const saveItem = (item: CalendarItem) => {
-    setItems((current) =>
-      current.some((existing) => existing.id === item.id)
-        ? current.map((existing) => (existing.id === item.id ? item : existing))
-        : [...current, item],
-    );
+  const saveItem = async (item: CalendarItem) => {
+    const isExistingLocal = items.some((existing) => existing.id === item.id);
+    const nextItems = isExistingLocal
+      ? items.map((existing) => (existing.id === item.id ? item : existing))
+      : [...items, item];
+
+    setItems(nextItems);
     setSelected(fromDateKey(item.date));
     setVisibleMonth(new Date(Number(item.date.slice(0, 4)), Number(item.date.slice(5, 7)) - 1, 1));
     setEditor(null);
     setMessage(
-      item.id.startsWith("sample-") || items.some((existing) => existing.id === item.id)
+      item.id.startsWith("sample-") || isExistingLocal
         ? t("calendar.entryUpdated")
         : t("calendar.addedToCalendar"),
     );
+
     if (item.reminderAt && "Notification" in window && Notification.permission === "default") {
       void Notification.requestPermission();
     }
+
+    const token = getAccessToken();
+    if (!token) return;
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      item.id,
+    );
+    const isStarter = item.id.startsWith("sample-");
+
+    try {
+      if (isExistingLocal && isUUID && !isStarter) {
+        const updated = await calendarApi.updateItem(
+          item.id,
+          frontendToBackendPayload(item),
+        );
+        const synced = backendToFrontendItem(updated);
+        setItems((curr) => curr.map((it) => (it.id === item.id ? synced : it)));
+      } else {
+        const created = await calendarApi.createItem(
+          frontendToBackendPayload(item),
+        );
+        const synced = backendToFrontendItem(created);
+        setItems((curr) => curr.map((it) => (it.id === item.id ? synced : it)));
+      }
+    } catch (err) {
+      console.warn("Failed to sync calendar item to server (saved locally):", err);
+    }
   };
 
-  const deleteItem = (id: string) => {
+  const deleteItem = async (id: string) => {
     setItems((current) => current.filter((item) => item.id !== id));
     setEditor(null);
     setMessage(t("calendar.entryDeleted"));
+
+    const token = getAccessToken();
+    if (!token) return;
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      id,
+    );
+    if (!isUUID || id.startsWith("sample-")) return;
+
+    try {
+      await calendarApi.deleteItem(id);
+    } catch (err) {
+      console.warn("Failed to delete calendar item from server:", err);
+    }
+  };
+
+  const toggleComplete = async (item: CalendarItem) => {
+    const nextCompleted = !item.completed;
+    const updatedItem: CalendarItem = { ...item, completed: nextCompleted };
+
+    setItems((curr) => curr.map((it) => (it.id === item.id ? updatedItem : it)));
+    setMessage(
+      nextCompleted ? t("calendar.taskCompleted") : t("calendar.taskReopened"),
+    );
+
+    const token = getAccessToken();
+    if (!token) return;
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      item.id,
+    );
+    if (!isUUID || item.id.startsWith("sample-")) {
+      try {
+        const created = await calendarApi.createItem(
+          frontendToBackendPayload(updatedItem),
+        );
+        const synced = backendToFrontendItem(created);
+        setItems((curr) => curr.map((it) => (it.id === item.id ? synced : it)));
+      } catch (err) {
+        console.warn("Failed to persist completed task to server:", err);
+      }
+      return;
+    }
+
+    try {
+      await calendarApi.updateItem(item.id, { completed: nextCompleted });
+    } catch (err) {
+      console.warn("Failed to toggle task completion on server:", err);
+    }
+  };
+
+  const saveDueDate = async (newDueDate: string) => {
+    setDueDate(newDueDate);
+    setEditingDueDate(false);
+    setMessage(t("calendar.dueDateUpdated"));
+
+    const token = getAccessToken();
+    if (!token) return;
+
+    try {
+      await usersApi.updateProfile({ estimated_due_date: newDueDate });
+    } catch (err) {
+      console.warn("Failed to sync due date to server:", err);
+    }
   };
 
   return (
@@ -669,7 +852,11 @@ export function CalendarPage() {
                   </p>
                 )}
                 {selectedItems.length > 0 ? (
-                  <AgendaItems items={selectedItems} onEdit={editItem} />
+                  <AgendaItems
+                    items={selectedItems}
+                    onEdit={editItem}
+                    onToggleComplete={toggleComplete}
+                  />
                 ) : (
                   <p className="py-4 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
                     {t("calendar.nothingPlannedDay")}
@@ -711,9 +898,7 @@ export function CalendarPage() {
                   onSubmit={(event) => {
                     event.preventDefault();
                     if (dueDraft) {
-                      setDueDate(dueDraft);
-                      setEditingDueDate(false);
-                      setMessage(t("calendar.dueDateUpdated"));
+                      void saveDueDate(dueDraft);
                     }
                   }}
                 >
@@ -812,7 +997,11 @@ export function CalendarPage() {
                       )}
                       {dayItems.length > 0 ? (
                         <div className="mt-1.5">
-                          <AgendaItems items={dayItems} onEdit={editItem} />
+                          <AgendaItems
+                            items={dayItems}
+                            onEdit={editItem}
+                            onToggleComplete={toggleComplete}
+                          />
                         </div>
                       ) : null}
                     </div>

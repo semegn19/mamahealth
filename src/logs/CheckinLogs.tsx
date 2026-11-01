@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { AlertTriangle, ChevronRight, Mic } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { CheckinReportSheet } from "../components/CheckinReportSheet";
-import { CHECKIN_LOGS } from "./checkinLogsData";
+import { CHECKIN_LOGS, backendCheckinToFrontendLog, type CheckinLog } from "./checkinLogsData";
+import { checkinApi, getAccessToken } from "@/api";
 import { useTranslation } from "@/components/languageStore";
 
 function formatDate(date: Date, isAmharic: boolean) {
@@ -22,8 +23,26 @@ function formatTime(date: Date, isAmharic: boolean) {
 
 export function CheckinLogs() {
   const { t, isAmharic } = useTranslation();
+  const [logs, setLogs] = useState<CheckinLog[]>(CHECKIN_LOGS);
   const [openLogId, setOpenLogId] = useState<string | null>(null);
-  const openLog = CHECKIN_LOGS.find((log) => log.id === openLogId) ?? null;
+  const openLog = logs.find((log) => log.id === openLogId) ?? null;
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    checkinApi
+      .getHistory({ limit: 50 })
+      .then((history) => {
+        if (Array.isArray(history) && history.length > 0) {
+          const mapped = history.map(backendCheckinToFrontendLog);
+          setLogs(mapped);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch check-in history from server, using local logs:", err);
+      });
+  }, []);
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#f3ecdf] text-[#4a3f30] dark:bg-[#15120e] dark:text-[#f0e4ce]">
@@ -46,7 +65,7 @@ export function CheckinLogs() {
         </section>
 
         <section aria-label={t("logs.title")} className="mt-6 space-y-3.5">
-          {CHECKIN_LOGS.map((log, index) => {
+          {logs.map((log, index) => {
             const dangerSigns = log.dangerSigns ?? [];
             const hasDanger = dangerSigns.length > 0;
             const sessionLabel =

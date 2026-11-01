@@ -25,10 +25,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { useProfile } from "../settings/profileStore";
 import { useNotifications } from "../notifications/notificationsData";
 import { ShareReportDialog } from "../report/ShareReportDialog";
-import { REPORT_ARCHIVE } from "../report/reportCatalog";
+import {
+  REPORT_ARCHIVE,
+  backendSummaryToArchiveItem,
+  type ReportArchiveItem,
+} from "../report/reportCatalog";
 import { QuickLogDialog } from "../logs/QuickLogDialog";
 import { mockAgendaFor as agendaFor } from "../mock/calendar";
-import { usersApi, type CurrentPregnancyStatus } from "../api";
+import {
+  ancApi,
+  reportsApi,
+  usersApi,
+  type CurrentPregnancyStatus,
+  type UserAppointment,
+  type WHOANCContact,
+} from "../api";
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -151,12 +162,19 @@ function TopSection({ now, pregnancy }: { now: Date; pregnancy?: CurrentPregnanc
 
   const currentWeek = pregnancy?.gestational_age_weeks ?? 24;
   const trimesterKey = pregnancy?.trimester;
-  const trimesterLabel =
-    trimesterKey === "first_trimester"
-      ? (t("home.firstTrimester") || "First trimester")
-      : trimesterKey === "third_trimester"
-      ? (t("home.thirdTrimester") || "Third trimester")
-      : t("home.secondTrimester");
+  const getTrimesterLabel = () => {
+    if (trimesterKey === "first_trimester") {
+      const label = t("home.firstTrimester");
+      return label === "home.firstTrimester" ? "First trimester" : label;
+    }
+    if (trimesterKey === "third_trimester") {
+      const label = t("home.thirdTrimester");
+      return label === "home.thirdTrimester" ? "Third trimester" : label;
+    }
+    const label = t("home.secondTrimester");
+    return label === "home.secondTrimester" ? "Second trimester" : label;
+  };
+  const trimesterLabel = getTrimesterLabel();
 
   return (
     <section aria-label="Overview" className="space-y-4">
@@ -189,13 +207,19 @@ function TopSection({ now, pregnancy }: { now: Date; pregnancy?: CurrentPregnanc
   );
 }
 
-function StatsSection({ now }: { now: Date }) {
+function StatsSection({
+  now,
+  latestReport,
+}: {
+  now: Date;
+  latestReport?: ReportArchiveItem | null;
+}) {
   const router = useRouter();
   const { t } = useTranslation();
   const day = WEEKDAY_SHORT[now.getDay()];
   const [shareOpen, setShareOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
-  const latestReport = REPORT_ARCHIVE[0];
+  const reportToShare = latestReport || REPORT_ARCHIVE[0];
 
   const journey = [
     { value: "4", unit: t("home.symptoms") },
@@ -309,8 +333,8 @@ function StatsSection({ now }: { now: Date }) {
       <ShareReportDialog
         open={shareOpen}
         onClose={() => setShareOpen(false)}
-        reportId={latestReport.id}
-        appointment={latestReport.appointment}
+        reportId={reportToShare.id}
+        appointment={reportToShare.appointment}
       />
 
       <QuickLogDialog open={logOpen} onClose={() => setLogOpen(false)} />
@@ -318,7 +342,15 @@ function StatsSection({ now }: { now: Date }) {
   );
 }
 
-function CalendarSection({ now }: { now: Date }) {
+function CalendarSection({
+  now,
+  appointment,
+  nextAnc,
+}: {
+  now: Date;
+  appointment?: UserAppointment | null;
+  nextAnc?: WHOANCContact | null;
+}) {
   const { t, isAmharic } = useTranslation();
   const dayLetters = useMemo(
     () => (isAmharic ? ["እ", "ሰ", "ማ", "ረ", "ሐ", "ዓ", "ቅ"] : ["S", "M", "T", "W", "T", "F", "S"]),
@@ -354,19 +386,68 @@ function CalendarSection({ now }: { now: Date }) {
   const heading = days[3].toLocaleDateString(isAmharic ? "am-ET" : "en-US", { month: "long", year: "numeric" });
   
   const agenda = useMemo(() => {
+    // 1. Check if selected matches clinical ANC appointment
+    if (appointment?.appointment_date) {
+      const [y, m, d] = appointment.appointment_date.split("-").map(Number);
+      if (
+        selected.getFullYear() === y &&
+        selected.getMonth() === m - 1 &&
+        selected.getDate() === d
+      ) {
+        return {
+          title: isAmharic
+            ? appointment.anc_contact_title_am || appointment.anc_contact_title || "የቅድመ ወሊድ ክትትል"
+            : appointment.anc_contact_title || "ANC Clinical Contact",
+          time: "09:30",
+          isAnc: true,
+        };
+      }
+    } else if (nextAnc?.target_date) {
+      const [y, m, d] = nextAnc.target_date.split("-").map(Number);
+      if (
+        selected.getFullYear() === y &&
+        selected.getMonth() === m - 1 &&
+        selected.getDate() === d
+      ) {
+        return {
+          title: isAmharic ? nextAnc.title_am : nextAnc.title_en,
+          time: "09:30",
+          isAnc: true,
+        };
+      }
+    }
+
+    // 2. Check saved user calendar items for selected day
+    try {
+      const saved = localStorage.getItem("mama-health-calendar-items-v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const selKey = `${selected.getFullYear()}-${String(selected.getMonth() + 1).padStart(2, "0")}-${String(selected.getDate()).padStart(2, "0")}`;
+        const match = Array.isArray(parsed) ? parsed.find((it: any) => it.date === selKey) : null;
+        if (match) {
+          return {
+            title: isAmharic ? match.title_am || match.title : match.title,
+            time: match.time || "09:00",
+            isAnc: false,
+          };
+        }
+      }
+    } catch {}
+
+    // 3. Fallback standard schedule
     switch (selected.getDay()) {
       case 1:
-        return { title: t("home.agendaMorning"), time: "08:00" };
+        return { title: t("home.agendaMorning"), time: "08:00", isAnc: false };
       case 3:
-        return { title: t("home.agendaMidwife"), time: "10:30" };
+        return { title: t("home.agendaMidwife"), time: "10:30", isAnc: false };
       case 5:
-        return { title: t("home.agendaGlucose"), time: "09:15" };
+        return { title: t("home.agendaGlucose"), time: "09:15", isAnc: false };
       case 6:
-        return { title: t("home.agendaYoga"), time: "18:00" };
+        return { title: t("home.agendaYoga"), time: "18:00", isAnc: false };
       default:
         return null;
     }
-  }, [selected, t]);
+  }, [selected, appointment, nextAnc, isAmharic, t]);
 
   return (
     <section
@@ -444,10 +525,16 @@ function CalendarSection({ now }: { now: Date }) {
       </div>
 
       <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/55 bg-white/35 px-4 py-3 backdrop-blur-md dark:border-[#e5be79]/16 dark:bg-[#1a1510]/65">
-        <span className="h-2 w-2 shrink-0 rounded-full bg-[#d9ab5e]" />
+        <span
+          className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+            agenda?.isAnc ? "bg-[#b74835] dark:bg-[#e4725c]" : "bg-[#d9ab5e]"
+          }`}
+        />
         {agenda ? (
           <p className="text-[13.5px] text-[#4a3f30] dark:text-[#f0e4ce]">
-            {agenda.title}
+            <span className={agenda.isAnc ? "font-semibold text-[#8d2d1f] dark:text-[#f08b75]" : ""}>
+              {agenda.title}
+            </span>
             <span className="text-[#9b8a6f] dark:text-[#9c8b72]"> · {agenda.time}</span>
           </p>
         ) : (
@@ -467,17 +554,46 @@ function CalendarSection({ now }: { now: Date }) {
 export function HomeDashboard() {
   const now = useMemo(() => new Date(), []);
   const [pregnancy, setPregnancy] = useState<CurrentPregnancyStatus | null>(null);
+  const [appointment, setAppointment] = useState<UserAppointment | null>(null);
+  const [nextAnc, setNextAnc] = useState<WHOANCContact | null>(null);
+  const [latestReport, setLatestReport] = useState<ReportArchiveItem | null>(null);
 
   useEffect(() => {
     let active = true;
+
     usersApi
       .getMe()
       .then((me) => {
-        if (active && me.current_pregnancy_status) {
+        if (!active) return;
+        if (me.current_pregnancy_status) {
           setPregnancy(me.current_pregnancy_status);
+        }
+        if (me.appointment) {
+          setAppointment(me.appointment);
         }
       })
       .catch(() => {});
+
+    ancApi
+      .getAncSchedule()
+      .then((sched) => {
+        if (!active) return;
+        if (sched.next_anc_contact) {
+          setNextAnc(sched.next_anc_contact);
+        }
+      })
+      .catch(() => {});
+
+    reportsApi
+      .getLatestSummary()
+      .then((summary) => {
+        if (!active) return;
+        if (summary && summary.id) {
+          setLatestReport(backendSummaryToArchiveItem(summary));
+        }
+      })
+      .catch(() => {});
+
     return () => {
       active = false;
     };
@@ -498,8 +614,12 @@ export function HomeDashboard() {
           <div className="md:col-span-2">
             <TopSection now={now} pregnancy={pregnancy} />
           </div>
-          <StatsSection now={now} />
-          <CalendarSection now={now} />
+          <StatsSection now={now} latestReport={latestReport} />
+          <CalendarSection
+            now={now}
+            appointment={appointment}
+            nextAnc={nextAnc}
+          />
         </div>
       </main>
 

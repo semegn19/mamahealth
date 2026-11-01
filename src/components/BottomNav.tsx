@@ -98,7 +98,7 @@ export function BottomNav({ current }: { current?: NavKey }) {
         }}
         className={`flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 active:scale-95 ${
           isActive
-            ? "bg-[#c9a35d] text-[#2c2010] shadow-[0_10px_22px_-12px_rgba(140,96,30,0.75)] dark:bg-[#8d6a2a] dark:text-[#fdf2da] dark:shadow-[0_10px_24px_-12px_rgba(0,0,0,0.85)]"
+            ? "bg-[#eed7a6] text-[#2c2010] shadow-[0_10px_22px_-12px_rgba(140,96,30,0.75)] dark:bg-[#8d6a2a] dark:text-[#fdf2da] dark:shadow-[0_10px_24px_-12px_rgba(0,0,0,0.85)]"
             : "bg-white/45 text-[#4a3f30] hover:bg-white/70 dark:bg-white/8 dark:text-[#e6dbca] dark:hover:bg-white/14"
         }`}
       >

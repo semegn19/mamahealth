@@ -2,14 +2,38 @@
 
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { BottomNav } from "../components/BottomNav";
 import { HomeTopBar } from "../components/HomeTopBar";
-import { REPORT_ARCHIVE, getLocalizedReport } from "./reportCatalog";
+import {
+  REPORT_ARCHIVE,
+  backendSummaryToArchiveItem,
+  getLocalizedReport,
+  type ReportArchiveItem,
+} from "./reportCatalog";
+import { getAccessToken, reportsApi } from "@/api";
 import { useTranslation } from "../components/languageStore";
 
 export function ReportsList() {
   const { t, isAmharic } = useTranslation();
+  const [reports, setReports] = useState<ReportArchiveItem[]>(REPORT_ARCHIVE);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    reportsApi
+      .getLatestSummary()
+      .then((latest) => {
+        if (latest && latest.id) {
+          const item = backendSummaryToArchiveItem(latest);
+          setReports((prev) => [item, ...prev.filter((r) => r.id !== item.id && r.id !== "third-appointment")]);
+        }
+      })
+      .catch(() => {
+        // Fall back to prototype archive
+      });
+  }, []);
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#f3ecdf] text-[#4a3f30] dark:bg-[#15120e] dark:text-[#f0e4ce]">
@@ -32,7 +56,7 @@ export function ReportsList() {
         </section>
 
         <section aria-label={t("reports.allReports")} className="mt-6 grid gap-3 md:grid-cols-2">
-          {REPORT_ARCHIVE.map((rawReport, index) => {
+          {reports.map((rawReport, index) => {
             const report = getLocalizedReport(rawReport, isAmharic);
             const hasDanger = Boolean(report.dangerSigns?.length);
             const dangerCount = report.dangerSigns?.length ?? 0;

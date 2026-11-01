@@ -1,3 +1,5 @@
+import type { BackendCalendarItem, CalendarItemCreatePayload } from "@/api/calendar";
+
 export type CalendarItem = {
   id: string;
   title: string;
@@ -6,6 +8,7 @@ export type CalendarItem = {
   date: string;
   time: string;
   reminderAt: string;
+  completed?: boolean;
 };
 
 export const ITEMS_KEY = "mama-health-calendar-items-v1";
@@ -68,3 +71,34 @@ export function loadDueDate(today: Date) {
   }
   return initialDueDate(today);
 }
+
+export function backendToFrontendItem(item: BackendCalendarItem): CalendarItem {
+  const timeStr = item.time ? item.time.slice(0, 5) : "09:00";
+  return {
+    id: item.id,
+    title: item.title,
+    title_am: item.title_am ?? undefined,
+    type: item.type,
+    date: item.date,
+    time: timeStr,
+    reminderAt: item.reminder_at ?? "",
+    completed: item.completed ?? false,
+  };
+}
+
+export function frontendToBackendPayload(item: CalendarItem): CalendarItemCreatePayload {
+  let timeStr: string | null = null;
+  if (item.time) {
+    timeStr = item.time.length === 5 ? `${item.time}:00` : item.time;
+  }
+  return {
+    title: item.title,
+    title_am: item.title_am || null,
+    type: item.type,
+    date: item.date,
+    time: timeStr,
+    reminder_at: item.reminderAt ? new Date(item.reminderAt).toISOString() : null,
+    completed: item.completed ?? false,
+  };
+}
+

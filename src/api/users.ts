@@ -30,6 +30,40 @@ export type UserSupplement = {
   created_at: string;
 };
 
+export type SupplementCreatePayload = {
+  name: string;
+  active?: boolean;
+  reminder_enabled?: boolean;
+  reminder_time?: string | null;
+};
+
+export type SupplementUpdatePayload = {
+  name?: string;
+  active?: boolean;
+  reminder_enabled?: boolean;
+  reminder_time?: string | null;
+};
+
+export type UserSettingsUpdatePayload = {
+  hospital?: string | null;
+  appointment?: {
+    appointment_date?: string;
+    anc_contact_number?: number;
+    anc_contact_title?: string;
+    anc_contact_title_am?: string;
+    target_gestational_weeks?: number;
+    reminder_lead_days?: number;
+  } | null;
+  supplements?: Array<{
+    id?: string;
+    name?: string;
+    active?: boolean;
+    reminder_enabled?: boolean;
+    reminder_time?: string | null;
+  }> | null;
+  maternal_profile?: Partial<OnboardingSubmitPayload> | null;
+};
+
 export type UserAppointment = {
   id: string;
   user_id: string;
@@ -84,6 +118,7 @@ export type OnboardingSubmitPayload = {
   manual_gestational_days?: number | null;
   gestational_age_weeks?: number | null;
   gestational_age_days?: number | null;
+  estimated_due_date?: string | null;
   total_pregnancies?: number | null;
   live_births?: number | null;
   had_c_section?: boolean | null;
@@ -120,6 +155,60 @@ export const usersApi = {
     return apiRequest<UserProfileResponse>("/users/me/profile", {
       method: "PUT",
       body: JSON.stringify(payload),
+    });
+  },
+
+  async updateSettings(payload: UserSettingsUpdatePayload): Promise<UserProfileResponse> {
+    return apiRequest<UserProfileResponse>("/users/me/settings", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async listSupplements(): Promise<UserSupplement[]> {
+    return apiRequest<UserSupplement[]>("/users/me/supplements");
+  },
+
+  async createSupplement(payload: SupplementCreatePayload): Promise<UserSupplement> {
+    return apiRequest<UserSupplement>("/users/me/supplements", {
+      method: "POST",
+      body: JSON.stringify({
+        name: payload.name,
+        active: payload.active ?? true,
+        reminder_enabled: payload.reminder_enabled ?? true,
+        reminder_time: payload.reminder_time
+          ? (payload.reminder_time.length === 5 ? `${payload.reminder_time}:00` : payload.reminder_time)
+          : null,
+      }),
+    });
+  },
+
+  async updateSupplement(supplementId: string, payload: SupplementUpdatePayload): Promise<UserSupplement> {
+    return apiRequest<UserSupplement>(`/users/me/supplements/${supplementId}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        ...payload,
+        reminder_time:
+          payload.reminder_time !== undefined
+            ? payload.reminder_time
+              ? payload.reminder_time.length === 5
+                ? `${payload.reminder_time}:00`
+                : payload.reminder_time
+              : null
+            : undefined,
+      }),
+    });
+  },
+
+  async deleteSupplement(supplementId: string): Promise<{ status: string }> {
+    return apiRequest<{ status: string }>(`/users/me/supplements/${supplementId}`, {
+      method: "DELETE",
+    });
+  },
+
+  async deleteAppointment(): Promise<{ status: string }> {
+    return apiRequest<{ status: string }>("/users/me/appointment", {
+      method: "DELETE",
     });
   },
 };

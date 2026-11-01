@@ -103,7 +103,9 @@
     "agendaMorning": "Morning check-in reminder",
     "agendaMidwife": "Midwife check-in",
     "agendaGlucose": "Glucose screening",
-    "agendaYoga": "Prenatal yoga"
+    "agendaYoga": "Prenatal yoga",
+    "firstTrimester": "First trimester",
+    "thirdTrimester": "Third trimester"
   },
   "reports": {
     "title": "ANC reports",
@@ -305,7 +307,14 @@
     "noReminderSet": "No reminder set",
     "dailyAt": "Daily at {time}",
     "noSupplementsYet": "No supplements yet. Add the ones you take.",
-    "weekStage": "Second trimester · Week 24"
+    "weekStage": "Second trimester · Week 24",
+    "preferredHospital": "Preferred Hospital / Health Center",
+    "preferredHospitalDesc": "Your primary health facility for ANC checkups and delivery.",
+    "editHospital": "Edit hospital",
+    "hospitalPlaceholder": "e.g. St. Paul's Hospital Millennium Medical College",
+    "hospitalUpdated": "Hospital updated",
+    "saveHospital": "Save hospital",
+    "enterHospitalError": "Enter or select a hospital."
   },
   "notifications": {
     "title": "Notifications",
@@ -405,7 +414,12 @@
     "starterMidwife": "Midwife appointment",
     "starterVitamins": "Take prenatal vitamins",
     "starterBP": "Blood pressure check",
-    "starterClass": "Prenatal class"
+    "starterClass": "Prenatal class",
+    "markComplete": "Mark complete",
+    "markIncomplete": "Mark incomplete",
+    "markAsCompleted": "Mark as completed",
+    "taskCompleted": "Task completed",
+    "taskReopened": "Task reopened"
   },
   "quickLog": {
     "title": "Log by hand",

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Bell,
+  Building2,
   Check,
   ChevronLeft,
   LogOut,
@@ -25,6 +26,7 @@ import { useProfile, type Supplement } from "./profileStore";
 import { useTranslation } from "../components/languageStore";
 import { useTheme, type Theme } from "../theme/themeStore";
 import { useRouter } from "next/navigation";
+import { usersApi, ancApi, authApi, getAccessToken, clearTokens } from "../api";
 
 function formatDate(value: string, isAmharic: boolean, notSetLabel: string) {
   if (!value) return notSetLabel;
@@ -326,6 +328,152 @@ function NameEditor({
 }
 
 /* ------------------------------------------------------------------ */
+/* Hospital editor dialog                                             */
+/* ------------------------------------------------------------------ */
+
+function HospitalEditor({
+  initialHospital,
+  onClose,
+  onSave,
+}: {
+  initialHospital: string;
+  onClose: () => void;
+  onSave: (hospital: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(initialHospital);
+  const [error, setError] = useState("");
+
+  const PRESET_HOSPITALS = [
+    "St. Paul's Hospital Millennium Medical College",
+    "Tikur Anbessa (Black Lion) Hospital",
+    "Gandhi Memorial Hospital",
+    "Zewditu Memorial Hospital",
+    "Tirunesh Beijing Hospital",
+    "Yekatit 12 Hospital Medical College",
+  ];
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = draft.trim();
+    if (!trimmed) return setError(t("settings.enterHospitalError"));
+    onSave(trimmed);
+  };
+
+  return (
+    <ModalDialog open={true} onClose={onClose} ariaLabelledBy="hospital-editor-title">
+      <div className="report-sheet w-full max-w-[440px] overflow-y-auto rounded-t-[30px] border border-white/80 bg-[#fbf6ec]/95 p-6 pb-[max(28px,env(safe-area-inset-bottom))] shadow-[0_-18px_50px_-25px_rgba(85,55,18,0.5)] backdrop-blur-xl sm:rounded-[30px] dark:border-[#e5be79]/22 dark:bg-[#221c15]/97 dark:shadow-[0_-18px_50px_-20px_rgba(0,0,0,0.85)]">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8d6a2a] dark:text-[#dfb870]">
+              {t("settings.preferredHospital")}
+            </p>
+            <h2
+              id="hospital-editor-title"
+              className="mt-1 text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
+            >
+              {t("settings.editHospital")}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("common.close")}
+            className="home-icon-solid flex h-10 w-10 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce]"
+          >
+            <X size={19} strokeWidth={1.8} />
+          </button>
+        </div>
+
+        <form className="mt-6 space-y-4" onSubmit={submit}>
+          <div>
+            <label
+              htmlFor="hospital-name"
+              className="block text-[13px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]"
+            >
+              {t("settings.preferredHospital")}
+            </label>
+            <input
+              id="hospital-name"
+              type="text"
+              required
+              maxLength={120}
+              autoFocus
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setError("");
+              }}
+              placeholder={t("settings.hospitalPlaceholder")}
+              className="mt-2 w-full rounded-2xl border border-[#d8c6a4] bg-white px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#a87a3d] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
+            />
+            <p className="mt-2 text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
+              {t("settings.preferredHospitalDesc")}
+            </p>
+          </div>
+
+          <div className="space-y-1.5 pt-1">
+            <p className="text-[12px] font-medium text-[#85735a] dark:text-[#9c8b72]">
+              Quick suggestions:
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_HOSPITALS.map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => {
+                    setDraft(h);
+                    setError("");
+                  }}
+                  className={`rounded-full border px-3 py-1.5 text-[12px] transition ${
+                    draft === h
+                      ? "border-[#8d6a2a] bg-[#8d6a2a] text-[#fffaf0] dark:border-[#e5be79] dark:bg-[#e5be79] dark:text-[#231b12]"
+                      : "border-[#d8c6a4] bg-white/50 text-[#4a3f30] hover:bg-white dark:border-[#4a3c2c] dark:bg-[#18130e]/70 dark:text-[#dfcfb6] dark:hover:bg-[#251e16]"
+                  }`}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <p role="alert" className="text-[13px] text-[#9c3a29] dark:text-[#f08b75]">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-white/60 dark:text-[#c7b69c] dark:hover:bg-white/8"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="submit"
+              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#4a3f30] px-5 py-3 text-[14px] font-medium text-[#fffaf0] transition enabled:hover:bg-[#655039] enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-[#e5be79] dark:text-[#231b12] dark:enabled:hover:bg-[#f0cf92]"
+            >
+              <Check size={17} strokeWidth={2} aria-hidden="true" />
+              {t("settings.saveHospital")}
+            </button>
+          </div>
+        </form>
+      </div>
+    </ModalDialog>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Supplement editor dialog                                            */
 /* ------------------------------------------------------------------ */
 
@@ -560,6 +708,9 @@ export function SettingsPage() {
   const [editingName, setEditingName] = useState(false);
   const nameEditButtonRef = useRef<HTMLButtonElement>(null);
   const wasEditingName = useRef(false);
+  const [editingHospital, setEditingHospital] = useState(false);
+  const hospitalEditButtonRef = useRef<HTMLButtonElement>(null);
+  const wasEditingHospital = useRef(false);
   const [editingAnc, setEditingAnc] = useState(false);
   const [ancDraft, setAncDraft] = useState(profile.nextAncDate);
   const [supplementEditor, setSupplementEditor] = useState<{
@@ -577,19 +728,108 @@ export function SettingsPage() {
     wasEditingName.current = editingName;
   }, [editingName]);
   useEffect(() => {
+    if (!editingHospital && wasEditingHospital.current) {
+      hospitalEditButtonRef.current?.focus();
+    }
+    wasEditingHospital.current = editingHospital;
+  }, [editingHospital]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (typeof window !== "undefined" && getAccessToken()) {
+      usersApi
+        .getMe()
+        .then((me) => {
+          if (!mounted) return;
+          const backendSupplements = (me.supplements || []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            reminderTime: s.reminder_time ? s.reminder_time.slice(0, 5) : "",
+          }));
+
+          let stageSummary = "";
+          if (me.current_pregnancy_status) {
+            const st = me.current_pregnancy_status;
+            if (isAmharic && st.formatted_age_am) {
+              stageSummary = st.formatted_age_am;
+            } else if (st.formatted_age_en) {
+              stageSummary = st.formatted_age_en;
+            } else if (st.gestational_age_weeks) {
+              stageSummary = `Week ${st.gestational_age_weeks}`;
+            }
+          }
+
+          update({
+            name: me.name || profile.name,
+            email: me.email || profile.email,
+            hospital: me.hospital || profile.hospital || "",
+            nextAncDate: me.appointment?.appointment_date || profile.nextAncDate,
+            supplements: backendSupplements.length > 0 ? backendSupplements : profile.supplements,
+            stageSummary: stageSummary || profile.stageSummary,
+          });
+        })
+        .catch((err) => {
+          console.warn("Failed to load user profile in settings:", err);
+        });
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [isAmharic]);
+
+  useEffect(() => {
     if (!message) return;
     const timer = window.setTimeout(() => setMessage(""), 3800);
     return () => window.clearTimeout(timer);
   }, [message]);
 
-  const saveName = (name: string) => {
+  const saveName = async (name: string) => {
     update({ name });
     setEditingName(false);
     setMessage(t("settings.nameUpdated"));
+    if (getAccessToken()) {
+      try {
+        await usersApi.updateProfile({ name });
+      } catch (err) {
+        console.warn("Failed to sync name to backend:", err);
+      }
+    }
   };
 
-  const saveSupplement = (supplement: Supplement) => {
+  const saveHospital = async (hospital: string) => {
+    update({ hospital });
+    setEditingHospital(false);
+    setMessage(t("settings.hospitalUpdated"));
+    if (getAccessToken()) {
+      try {
+        await usersApi.updateHospital(hospital);
+      } catch (err) {
+        console.warn("Failed to sync hospital to backend:", err);
+      }
+    }
+  };
+
+  const saveAncDate = async (newDate: string) => {
+    update({ nextAncDate: newDate });
+    setEditingAnc(false);
+    setMessage(t("settings.appointmentUpdated"));
+    if (getAccessToken()) {
+      try {
+        await ancApi.upsertAppointment({
+          appointment_date: newDate,
+          anc_contact_number: 1,
+          reminder_lead_days: 2,
+        });
+      } catch (err) {
+        console.warn("Failed to sync appointment to backend:", err);
+      }
+    }
+  };
+
+  const saveSupplement = async (supplement: Supplement) => {
     const exists = profile.supplements.some((s) => s.id === supplement.id);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(supplement.id);
+
     update({
       supplements: exists
         ? profile.supplements.map((s) => (s.id === supplement.id ? supplement : s))
@@ -597,12 +837,48 @@ export function SettingsPage() {
     });
     setSupplementEditor(null);
     setMessage(exists ? t("settings.supplementUpdated") : t("settings.supplementAdded"));
+
+    if (getAccessToken()) {
+      try {
+        if (exists && isUuid) {
+          await usersApi.updateSupplement(supplement.id, {
+            name: supplement.name,
+            active: true,
+            reminder_enabled: Boolean(supplement.reminderTime),
+            reminder_time: supplement.reminderTime || null,
+          });
+        } else {
+          const created = await usersApi.createSupplement({
+            name: supplement.name,
+            active: true,
+            reminder_enabled: Boolean(supplement.reminderTime),
+            reminder_time: supplement.reminderTime || null,
+          });
+          update({
+            supplements: profile.supplements.map((s) =>
+              s.id === supplement.id ? { ...s, id: created.id } : s
+            ),
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to save supplement to backend:", err);
+      }
+    }
   };
 
-  const deleteSupplement = (id: string) => {
+  const deleteSupplement = async (id: string) => {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     update({ supplements: profile.supplements.filter((s) => s.id !== id) });
     setSupplementEditor(null);
     setMessage(t("settings.supplementRemoved"));
+
+    if (getAccessToken() && isUuid) {
+      try {
+        await usersApi.deleteSupplement(id);
+      } catch (err) {
+        console.warn("Failed to delete supplement from backend:", err);
+      }
+    }
   };
 
   return (
@@ -659,7 +935,7 @@ export function SettingsPage() {
               {profile.email}
             </p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
-              {t("settings.weekStage")}
+              {profile.stageSummary || t("settings.weekStage")}
             </p>
           </div>
         </section>
@@ -680,6 +956,32 @@ export function SettingsPage() {
             />
           </Card>
 
+          {/* Preferred Hospital / Health Center */}
+          <Card
+            title={t("settings.preferredHospital")}
+            description={t("settings.preferredHospitalDesc")}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-3 min-w-0">
+                <span className="flex h-10 w-10 shrink-0 aspect-square items-center justify-center rounded-full bg-[#d9ab5e]/15 text-[#7b5b2b] dark:bg-[#e5be79]/15 dark:text-[#e5be79]">
+                  <Building2 size={18} strokeWidth={1.8} aria-hidden="true" />
+                </span>
+                <span className="truncate text-[15px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
+                  {profile.hospital || t("settings.notSet")}
+                </span>
+              </span>
+              <button
+                ref={hospitalEditButtonRef}
+                type="button"
+                onClick={() => setEditingHospital(true)}
+                aria-label={t("settings.editHospital")}
+                className="flex items-center gap-1.5 shrink-0 rounded-full border border-[#d8c6a4] px-4 py-2 text-[13px] font-medium text-[#6f5a35] transition hover:bg-white/60 dark:border-[#4a3c2c] dark:text-[#dfb870] dark:hover:bg-white/8"
+              >
+                <Pencil size={14} strokeWidth={1.8} aria-hidden="true" /> {t("common.edit")}
+              </button>
+            </div>
+          </Card>
+
           {/* Next ANC contact */}
           <Card title={t("settings.nextAnc")} description={t("settings.ancDescription")}>
             {editingAnc ? (
@@ -687,9 +989,7 @@ export function SettingsPage() {
                 className="flex flex-col gap-3 sm:flex-row sm:items-center"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  update({ nextAncDate: ancDraft });
-                  setEditingAnc(false);
-                  setMessage(t("settings.appointmentUpdated"));
+                  saveAncDate(ancDraft);
                 }}
               >
                 <label htmlFor="anc-date" className="sr-only">
@@ -868,6 +1168,14 @@ export function SettingsPage() {
         />
       )}
 
+      {editingHospital && (
+        <HospitalEditor
+          initialHospital={profile.hospital || ""}
+          onClose={() => setEditingHospital(false)}
+          onSave={saveHospital}
+        />
+      )}
+
       {confirm === "logout" && (
         <ConfirmDialog
           title={t("settings.logoutTitle")}
@@ -875,9 +1183,16 @@ export function SettingsPage() {
           confirmLabel={t("settings.logoutConfirm")}
           tone="neutral"
           onCancel={() => setConfirm(null)}
-          onConfirm={() => {
+          onConfirm={async () => {
+            try {
+              await authApi.logout();
+            } catch {
+              // Ignore logout network issues
+            }
+            clearTokens();
+            resetAll();
             setConfirm(null);
-            router.replace("/");
+            router.replace("/login");
           }}
         />
       )}
@@ -889,7 +1204,13 @@ export function SettingsPage() {
           confirmLabel={t("settings.deleteConfirm")}
           tone="danger"
           onCancel={() => setConfirm(null)}
-          onConfirm={() => {
+          onConfirm={async () => {
+            try {
+              await authApi.logout();
+            } catch {
+              // Ignore
+            }
+            clearTokens();
             resetAll();
             setConfirm(null);
             router.replace("/");

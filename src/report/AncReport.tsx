@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { AlertTriangle, ChevronLeft, FileText } from "lucide-react";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { SeverityCalendar, SymptomBars } from "./charts";
@@ -9,7 +9,13 @@ import { FoodScoreDonut } from "./FoodScoreDonut";
 import { ReportShareButton } from "./ReportShareButton";
 import { SupplementAdherence } from "./SupplementAdherence";
 import { useCountUp } from "./useInViewOnce";
-import { getReportArchiveItem, getLocalizedReport } from "./reportCatalog";
+import {
+  getReportArchiveItem,
+  getLocalizedReport,
+  backendSummaryToArchiveItem,
+  type ReportArchiveItem,
+} from "./reportCatalog";
+import { getAccessToken, reportsApi } from "@/api";
 import { useTranslation } from "../components/languageStore";
 import {
   AVG_FOOD_GROUPS,
@@ -31,9 +37,37 @@ const leading = topSymptoms[0];
 export function AncReport({ reportId }: { reportId?: string }) {
   const { t, isAmharic } = useTranslation();
   const rawReport = getReportArchiveItem(reportId);
-  const report = useMemo(() => getLocalizedReport(rawReport, isAmharic), [rawReport, isAmharic]);
+  const [currentReport, setCurrentReport] = useState<ReportArchiveItem>(rawReport);
+  const report = useMemo(
+    () => getLocalizedReport(currentReport, isAmharic),
+    [currentReport, isAmharic],
+  );
   const [selectedDay, setSelectedDay] = useState<DayRecord | null>(null);
   const symptomDetailsId = useId();
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    reportsApi
+      .getLatestSummary()
+      .then((latest) => {
+        if (latest && latest.id) {
+          if (
+            !reportId ||
+            reportId === "third-appointment" ||
+            reportId === latest.id ||
+            reportId === latest.share_link_slug
+          ) {
+            const mapped = backendSummaryToArchiveItem(latest);
+            setCurrentReport(mapped);
+          }
+        }
+      })
+      .catch(() => {
+        // Fallback to local report
+      });
+  }, [reportId]);
 
   const dangerSigns = report.dangerSigns ?? [];
   const dangerSignsByDay = useMemo(() => {
