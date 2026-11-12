@@ -16,6 +16,8 @@ import { useProfile } from "../settings/profileStore";
 import { useManualFood, useManualSupplements } from "./quickLogStore";
 import { useTranslation } from "../components/languageStore";
 import { ModalDialog } from "../components/ModalDialog";
+import { showToast } from "../components/toastStore";
+import { usersApi, getAccessToken, useInvalidateQueries } from "../api";
 
 /** Food groups used by the hand log (kept in sync with the ANC report). */
 export const FOOD_GROUPS_FOR_LOG = [
@@ -47,6 +49,7 @@ export function QuickLogDialog({
   const [groups, setGroups] = useState<number[]>([]);
   const [savedSummary, setSavedSummary] = useState("");
   const [error, setError] = useState("");
+  const { invalidateCheckinHistory, invalidateUser } = useInvalidateQueries();
 
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -91,7 +94,7 @@ export function QuickLogDialog({
 
   if (!open) return null;
 
-  const saveSupplementAnswers = () => {
+  const saveSupplementAnswers = async () => {
     const unanswered = supplements.filter((supplement) => answers[supplement.id] === undefined);
     if (unanswered.length > 0) {
       setError(
@@ -106,7 +109,26 @@ export function QuickLogDialog({
       name: supplement.name,
       taken: answers[supplement.id] === true,
     }));
+
+    if (getAccessToken()) {
+      try {
+        for (const item of next) {
+          await usersApi.verifySupplement({
+            supplement_id: item.id.includes("-") && item.id.length > 20 ? item.id : undefined,
+            supplement_name: item.name,
+            taken_today: item.taken,
+          });
+        }
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Failed to sync supplements with server", "error");
+        return;
+      }
+      invalidateCheckinHistory();
+      invalidateUser();
+    }
+
     saveSupplements(next);
+
     const taken = next.filter((item) => item.taken).length;
     setSavedSummary(
       taken === next.length
@@ -118,20 +140,45 @@ export function QuickLogDialog({
             total: next.length,
           }),
     );
+    showToast(t("quickLog.savedTitle"));
     setScreen("saved");
   };
 
-  const saveFoodAnswers = () => {
+  const saveFoodAnswers = async () => {
     if (groups.length === 0) {
       setError(t("quickLog.chooseAtLeastOneFood"));
       return;
     }
-    saveFood(groups);
     const names = groups
       .map((index) =>
         isAmharic ? FOOD_GROUPS_FOR_LOG[index].name_am : FOOD_GROUPS_FOR_LOG[index].name,
       )
       .join(isAmharic ? "፣ " : ", ");
+
+    if (getAccessToken()) {
+      try {
+        // Map food group indices to backend FoodGroup literal:
+        // 0 -> grains, 1 -> proteins, 2 -> dairy, 3/4 -> fruits_and_vegetables
+        const mappedGroups = new Set<"grains" | "proteins" | "dairy" | "fruits_and_vegetables">();
+        for (const idx of groups) {
+          if (idx === 0) mappedGroups.add("grains");
+          else if (idx === 1) mappedGroups.add("proteins");
+          else if (idx === 2) mappedGroups.add("dairy");
+          else mappedGroups.add("fruits_and_vegetables");
+        }
+        await usersApi.verifyFood({
+          food_groups: Array.from(mappedGroups),
+          raw_text: names,
+        });
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Failed to sync food log with server", "error");
+        return;
+      }
+      invalidateCheckinHistory();
+    }
+
+    saveFood(groups);
+
     setSavedSummary(
       t("quickLog.foodGroupsLogged", {
         count: groups.length,
@@ -139,6 +186,7 @@ export function QuickLogDialog({
         items: names,
       }),
     );
+    showToast(t("quickLog.savedTitle"));
     setScreen("saved");
   };
 
@@ -160,9 +208,9 @@ export function QuickLogDialog({
     <ModalDialog open={open} onClose={onClose} ariaLabelledBy="quick-log-title">
       <div
         ref={panelRef}
-        className="report-sheet relative max-h-[calc(100dvh-2rem)] w-full max-w-[440px] overflow-y-auto overscroll-contain rounded-[30px] border border-white/80 bg-[#fbf6ec]/[0.98] p-6 shadow-[0_18px_60px_-20px_rgba(85,55,18,0.5)] backdrop-blur-xl dark:border-[#e5be79]/22 dark:bg-[#221c15]/[0.98] dark:shadow-[0_24px_64px_-18px_rgba(0,0,0,0.88)]"
+        className="report-sheet home-glass-warm relative max-h-[90dvh] w-full max-w-[440px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]"
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           {screen !== "choose" && screen !== "saved" ? (
             <button
               type="button"
@@ -177,7 +225,7 @@ export function QuickLogDialog({
           )}
           <h2
             id="quick-log-title"
-            className="mt-2 flex-1 text-center text-[22px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
+            className="flex-1 text-center text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
           >
             {screen === "choose" && t("quickLog.title")}
             {screen === "supplements" && t("quickLog.didYouTakeSupplements")}
@@ -206,7 +254,7 @@ export function QuickLogDialog({
                 setError("");
                 setScreen("supplements");
               }}
-              className="home-card-solid group flex w-full items-center gap-3.5 rounded-[22px] px-4 py-4 text-left transition hover:border-[#c9a35d] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:hover:border-[#e5be79]/55 dark:focus-visible:outline-[#e5be79]"
+              className="group flex w-full items-center gap-3.5 rounded-[22px] border border-[#d8c6a4]/60 bg-white/30 px-4 py-4 text-left backdrop-blur-sm transition hover:border-[#c9a35d] hover:bg-white/50 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:border-[#4a3c2c]/70 dark:bg-white/[0.03] dark:hover:border-[#e5be79]/55 dark:hover:bg-white/[0.07] dark:focus-visible:outline-[#e5be79]"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#fbe7b8] text-[#6f5a35] dark:bg-[#e5be79]/18 dark:text-[#e5be79]">
                 <Pill size={19} strokeWidth={1.8} aria-hidden="true" />
@@ -231,7 +279,7 @@ export function QuickLogDialog({
                 setError("");
                 setScreen("food");
               }}
-              className="home-card-solid group flex w-full items-center gap-3.5 rounded-[22px] px-4 py-4 text-left transition hover:border-[#c9a35d] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:hover:border-[#e5be79]/55 dark:focus-visible:outline-[#e5be79]"
+              className="group flex w-full items-center gap-3.5 rounded-[22px] border border-[#d8c6a4]/60 bg-white/30 px-4 py-4 text-left backdrop-blur-sm transition hover:border-[#c9a35d] hover:bg-white/50 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:border-[#4a3c2c]/70 dark:bg-white/[0.03] dark:hover:border-[#e5be79]/55 dark:hover:bg-white/[0.07] dark:focus-visible:outline-[#e5be79]"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#d9ab5e]/20 text-[#7b5b2b] dark:bg-[#e5be79]/15 dark:text-[#e5be79]">
                 <UtensilsCrossed size={19} strokeWidth={1.8} aria-hidden="true" />
@@ -258,63 +306,61 @@ export function QuickLogDialog({
             <p className="text-center text-[13.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
               {t("quickLog.supplementPrompt")}
             </p>
-            <ul className="mt-4 space-y-2.5">
+            <div className="mt-4 space-y-3.5">
               {supplements.map((supplement) => {
                 const value = answers[supplement.id];
                 return (
-                  <li
+                  <div
                     key={supplement.id}
-                    className="rounded-[20px] border border-white/70 bg-white/65 px-4 py-3.5 backdrop-blur-sm dark:border-[#3d3123] dark:bg-[#19140f]/85"
+                    className="py-2"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fbe7b8]/80 text-[#6f5a35] dark:bg-[#e5be79]/18 dark:text-[#e5be79]">
-                          <Pill size={16} strokeWidth={1.8} aria-hidden="true" />
-                        </span>
-                        <span className="text-[15px] font-medium capitalize text-[#3b3226] dark:text-[#f5ede0]">
-                          {supplement.name}
-                        </span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fbe7b8]/80 text-[#6f5a35] dark:bg-[#e5be79]/18 dark:text-[#e5be79]">
+                        <Pill size={15} strokeWidth={1.8} aria-hidden="true" />
                       </span>
-                      <div
-                        className="flex shrink-0 gap-1.5"
-                        role="group"
-                        aria-label={`${supplement.name} taken today?`}
-                      >
-                        {[
-                          { label: t("common.yes"), taken: true },
-                          { label: t("common.no"), taken: false },
-                        ].map((option) => {
-                          const active = value === option.taken;
-                          return (
-                            <button
-                              key={option.label}
-                              type="button"
-                              aria-pressed={active}
-                              onClick={() => {
-                                setAnswers((current) => ({
-                                  ...current,
-                                  [supplement.id]: option.taken,
-                                }));
-                                setError("");
-                              }}
-                              className={`min-h-10 min-w-[58px] rounded-full px-3.5 text-[13.5px] font-medium transition-colors ${
-                                active
-                                  ? option.taken
-                                    ? "bg-[#4a3f30] text-[#fffaf0] dark:bg-[#e5be79] dark:text-[#231b12]"
-                                    : "bg-[#9c3a29] text-[#fff7f2] dark:bg-[#c65a45]"
-                                  : "border border-[#d8c6a4] bg-white/80 text-[#6f6149] hover:bg-white dark:border-[#4a3c2c] dark:bg-[#231c15] dark:text-[#c7b69c] dark:hover:bg-[#2d241b]"
-                              }`}
-                            >
-                              {option.label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <p className="text-[15px] font-medium capitalize text-[#3b3226] dark:text-[#f5ede0]">
+                        {supplement.name}
+                      </p>
                     </div>
-                  </li>
+
+                    <div
+                      className="mt-3 grid grid-cols-2 gap-2.5"
+                      role="group"
+                      aria-label={`${supplement.name} taken today?`}
+                    >
+                      {[
+                        { label: t("common.yes"), taken: true },
+                        { label: t("common.no"), taken: false },
+                      ].map((option) => {
+                        const active = value === option.taken;
+                        return (
+                          <button
+                            key={option.label}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => {
+                              setAnswers((current) => ({
+                                ...current,
+                                [supplement.id]: option.taken,
+                              }));
+                              setError("");
+                            }}
+                            className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border text-[14.5px] font-medium transition-all duration-200 ${
+                              active
+                                ? "border-[#4a3f30] bg-[#4a3f30] text-[#fffaf0] shadow-[0_8px_20px_-10px_rgba(60,45,25,0.6)] dark:border-[#e5be79] dark:bg-[#e5be79] dark:text-[#231b12]"
+                                : "border-[#d8c6a4] bg-white/80 text-[#6f6149] hover:border-[#c9a35d] hover:bg-white dark:border-[#4a3c2c] dark:bg-[#231c15]/85 dark:text-[#c7b69c] dark:hover:border-[#e5be79]/55 dark:hover:bg-[#2c231a]"
+                            }`}
+                          >
+                            {active && <Check size={15} strokeWidth={2.5} aria-hidden="true" />}
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
             {error && (
               <p role="alert" className="mt-3 text-[13px] text-[#9c3a29] dark:text-[#f08b75]">
                 {error}

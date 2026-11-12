@@ -15,6 +15,7 @@ export type CheckinEntry = {
 };
 
 export type CheckinDangerSign = {
+  category?: string;
   name: string;
   name_am?: string;
   detail: string;
@@ -60,6 +61,19 @@ export function CheckinReportSheet({
 
   const defaultEmpty = emptyMessage ?? t("logs.emptyDetail");
 
+  // Safeguard: deduplicate entries in case any existing or legacy entries have duplicate questions
+  const uniqueEntries = entries.reduce<CheckinEntry[]>((acc, entry) => {
+    const isDup = acc.some(
+      (existing) =>
+        (existing.question && entry.question && existing.question.trim().toLowerCase() === entry.question.trim().toLowerCase()) ||
+        (existing.question_am && entry.question_am && existing.question_am.trim() === entry.question_am.trim())
+    );
+    if (!isDup) {
+      acc.push(entry);
+    }
+    return acc;
+  }, []);
+
   return (
     <ModalDialog
       open={open}
@@ -68,18 +82,18 @@ export function CheckinReportSheet({
       containerClassName="max-w-[460px]"
     >
       <div
-        className="report-sheet max-h-[84dvh] w-full overflow-y-auto rounded-t-[30px] border border-white/80 bg-[#f3ecdf]/96 p-5 pb-8 shadow-[0_-18px_50px_-25px_rgba(85,55,18,0.5)] backdrop-blur-xl sm:rounded-[30px] sm:p-6 dark:border-[#e5be79]/20 dark:bg-[#15120e]/96 dark:shadow-[0_-18px_50px_-20px_rgba(0,0,0,0.85)]"
+        className="report-sheet home-glass-warm max-h-[90dvh] w-full max-w-[460px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h2
               id="checkin-report-title"
-              className="text-[28px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]"
+              className="text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
             >
               {title}
             </h2>
             {eyebrow && (
-              <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.2em] text-[#8d6a2a] dark:text-[#dfb870]">
+              <p className="mt-1 text-[13px] font-medium text-[#8d6a2a] dark:text-[#dfb870]">
                 {eyebrow}
               </p>
             )}
@@ -88,9 +102,9 @@ export function CheckinReportSheet({
             type="button"
             onClick={onClose}
             aria-label={t("common.close")}
-            className="home-icon-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
+            className="home-icon-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition active:scale-95"
           >
-            <X size={18} strokeWidth={1.8} />
+            <X size={19} strokeWidth={1.8} />
           </button>
         </div>
 
@@ -140,13 +154,13 @@ export function CheckinReportSheet({
               {t("logs.responsesSubtitle")}
             </p>
 
-            {entries.length === 0 ? (
+            {uniqueEntries.length === 0 ? (
               <p className="mt-4 py-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
                 {defaultEmpty}
               </p>
             ) : (
               <ul className="mt-4 divide-y divide-[#b98a3e]/15 border-t border-[#b98a3e]/15 dark:divide-[#e5be79]/12 dark:border-[#e5be79]/12">
-                {entries.map((entry, index) => {
+                {uniqueEntries.map((entry, index) => {
                   const severity = entry.severity ?? 50;
                   const displayQ = isAmharic ? (entry.question_am ?? entry.question) : entry.question;
                   const displayA = isAmharic ? (entry.answer_am ?? entry.answer) : entry.answer;
@@ -161,7 +175,7 @@ export function CheckinReportSheet({
                       </p>
                       {entry.skipped ? (
                         <p className="mt-1 text-[14.5px] italic text-[#9b8a6f] dark:text-[#86765f]">
-                          {t("logs.skipped")}
+                          {displayA || t("logs.skipped")}
                         </p>
                       ) : (
                         <>

@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
-import { AlertTriangle, ChevronRight, Mic } from "lucide-react";
+import { useMemo, useState, type CSSProperties } from "react";
+import Link from "next/link";
+import { AlertTriangle, ChevronRight, Mic, Plus } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { CheckinReportSheet } from "../components/CheckinReportSheet";
-import { CHECKIN_LOGS, backendCheckinToFrontendLog, type CheckinLog } from "./checkinLogsData";
-import { checkinApi, getAccessToken } from "@/api";
+import { backendCheckinToFrontendLog, type CheckinLog } from "./checkinLogsData";
+import { useCheckinHistory } from "@/api";
 import { useTranslation } from "@/components/languageStore";
+import { showToast } from "@/components/toastStore";
 
 function formatDate(date: Date, isAmharic: boolean) {
   return date.toLocaleDateString(isAmharic ? "am-ET" : "en-GB", {
@@ -21,28 +23,44 @@ function formatTime(date: Date, isAmharic: boolean) {
   return date.toLocaleTimeString(isAmharic ? "am-ET" : "en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
+function deduplicateLogs(logs: CheckinLog[]): CheckinLog[] {
+  const result: CheckinLog[] = [];
+  for (const log of logs) {
+    const isDuplicate = result.some((existing) => {
+      if (existing.id === log.id) return true;
+      const timeDiffMs = Math.abs(existing.date.getTime() - log.date.getTime());
+      if (timeDiffMs < 10000) {
+        const existingDanger = (existing.dangerSigns?.length ?? 0) > 0;
+        const logDanger = (log.dangerSigns?.length ?? 0) > 0;
+        const existingFirstAnswer = existing.entries[0]?.answer ?? "";
+        const logFirstAnswer = log.entries[0]?.answer ?? "";
+        if (existingDanger === logDanger && existingFirstAnswer === logFirstAnswer) {
+          return true;
+        }
+      }
+      return false;
+    });
+    if (!isDuplicate) {
+      result.push(log);
+    }
+  }
+  return result;
+}
+
 export function CheckinLogs() {
   const { t, isAmharic } = useTranslation();
-  const [logs, setLogs] = useState<CheckinLog[]>(CHECKIN_LOGS);
+  const { data: rawHistory, isLoading: loading } = useCheckinHistory(50);
   const [openLogId, setOpenLogId] = useState<string | null>(null);
+
+  const logs = useMemo(() => {
+    if (!Array.isArray(rawHistory)) return [];
+    const mapped = rawHistory
+      .map(backendCheckinToFrontendLog)
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+    return deduplicateLogs(mapped);
+  }, [rawHistory]);
+
   const openLog = logs.find((log) => log.id === openLogId) ?? null;
-
-  useEffect(() => {
-    const token = getAccessToken();
-    if (!token) return;
-
-    checkinApi
-      .getHistory({ limit: 50 })
-      .then((history) => {
-        if (Array.isArray(history) && history.length > 0) {
-          const mapped = history.map(backendCheckinToFrontendLog);
-          setLogs(mapped);
-        }
-      })
-      .catch((err) => {
-        console.warn("Failed to fetch check-in history from server, using local logs:", err);
-      });
-  }, []);
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#f3ecdf] text-[#4a3f30] dark:bg-[#15120e] dark:text-[#f0e4ce]">
@@ -55,74 +73,106 @@ export function CheckinLogs() {
       <main className="relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[720px] md:px-8">
         <HomeTopBar />
 
-        <section className="mt-8">
-          <h1 className="text-[34px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
-            {t("logs.title")}
-          </h1>
-          <p className="mt-3 max-w-[38ch] text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-            {t("logs.subtitle")}
-          </p>
+        <section className="mt-8 flex items-end justify-between">
+          <div>
+            <h1 className="text-[34px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
+              {t("logs.title")}
+            </h1>
+            <p className="mt-3 max-w-[38ch] text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
+              {t("logs.subtitle")}
+            </p>
+          </div>
+          <Link
+            href="/voice"
+            className="flex h-12 items-center gap-2 rounded-full bg-[#3b3226] px-5 text-[14px] font-medium text-[#fbe7b8] shadow-sm transition hover:bg-[#4a3f30] active:scale-95 dark:bg-[#e5be79] dark:text-[#231b12]"
+          >
+            <Mic size={16} />
+            <span>{isAmharic ? "ምዝገባ ጀምር" : "New check-in"}</span>
+          </Link>
         </section>
 
         <section aria-label={t("logs.title")} className="mt-6 space-y-3.5">
-          {logs.map((log, index) => {
-            const dangerSigns = log.dangerSigns ?? [];
-            const hasDanger = dangerSigns.length > 0;
-            const sessionLabel =
-              log.session === "Morning" ? t("logs.morningSession") : t("logs.eveningSession");
-
-            return (
-              <button
-                key={log.id}
-                type="button"
-                data-dashboard-card
-                onClick={() => setOpenLogId(log.id)}
-                aria-label={`${formatDate(log.date, isAmharic)}, ${formatTime(log.date, isAmharic)}`}
-                className={`report-list-card home-glass group flex w-full items-center gap-3.5 rounded-[26px] p-5 text-left transition hover:-translate-y-0.5 active:scale-[0.99] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 sm:px-6 ${
-                  hasDanger
-                    ? "!border-[#c65a45]/35 hover:!border-[#c65a45]/60 focus-visible:outline-[#9c3a29] dark:!border-[#d9715b]/38 dark:hover:!border-[#e8846e]/65 dark:focus-visible:outline-[#f08b75]"
-                    : "hover:!border-[#c9a35d]/55 focus-visible:outline-[#8d6a2a] dark:hover:!border-[#e5be79]/40 dark:focus-visible:outline-[#e5be79]"
-                }`}
-                style={{ "--report-item-delay": `${70 + index * 55}ms` } as CSSProperties}
+          {logs.length === 0 ? (
+            <div className="home-glass rounded-[28px] p-8 text-center" data-dashboard-card>
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#fbe7b8] text-[#8d6a2a] dark:bg-[#e5be79]/18 dark:text-[#e5be79]">
+                <Mic size={24} strokeWidth={1.8} />
+              </div>
+              <h2 className="mt-4 text-[20px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
+                {isAmharic ? "ምንም የተመዘገበ ዕለታዊ ምዝገባ የለም" : "No check-ins recorded yet"}
+              </h2>
+              <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
+                {isAmharic
+                  ? "የዕለታዊ የጤና፣ የአመጋገብ እና የእንክብል ሁኔታዎን ለመመዝገብ የመጀመሪያዎን የድምጽ ምዝገባ ያድርጉ።"
+                  : "Record your daily health, nutrition, and supplements to start building your care timeline."}
+              </p>
+              <Link
+                href="/voice"
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#3b3226] px-6 py-3 text-[14px] font-medium text-[#fbe7b8] transition hover:bg-[#4a3f30] active:scale-95 dark:bg-[#e5be79] dark:text-[#231b12]"
               >
-                <span
-                  aria-hidden="true"
-                  className={`flex h-11 w-11 shrink-0 aspect-square items-center justify-center rounded-full ${
+                <Mic size={16} />
+                <span>{isAmharic ? "የመጀመሪያዎን ምዝገባ ያድርጉ" : "Record your first check-in"}</span>
+              </Link>
+            </div>
+          ) : (
+            logs.map((log, index) => {
+              const dangerSigns = log.dangerSigns ?? [];
+              const hasDanger = dangerSigns.length > 0;
+              const sessionLabel =
+                log.session === "Morning" ? t("logs.morningSession") : t("logs.eveningSession");
+
+              return (
+                <button
+                  key={log.id}
+                  type="button"
+                  data-dashboard-card
+                  onClick={() => setOpenLogId(log.id)}
+                  aria-label={`${formatDate(log.date, isAmharic)}, ${formatTime(log.date, isAmharic)}`}
+                  className={`report-list-card home-glass group flex w-full items-center gap-3.5 rounded-[26px] p-5 text-left transition hover:-translate-y-0.5 active:scale-[0.99] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 sm:px-6 ${
                     hasDanger
-                      ? "bg-[#9c3a29]/12 text-[#9c3a29] dark:bg-[#c65a45]/20 dark:text-[#f08b75]"
-                      : "bg-[#d9ab5e]/15 text-[#7b5b2b] dark:bg-[#e5be79]/15 dark:text-[#e5be79]"
+                      ? "!border-[#c65a45]/35 hover:!border-[#c65a45]/60 focus-visible:outline-[#9c3a29] dark:!border-[#d9715b]/38 dark:hover:!border-[#e8846e]/65 dark:focus-visible:outline-[#f08b75]"
+                      : "hover:!border-[#c9a35d]/55 focus-visible:outline-[#8d6a2a] dark:hover:!border-[#e5be79]/40 dark:focus-visible:outline-[#e5be79]"
                   }`}
+                  style={{ "--report-item-delay": `${70 + index * 55}ms` } as CSSProperties}
                 >
-                  {hasDanger ? (
-                    <AlertTriangle size={18} strokeWidth={1.85} />
-                  ) : (
-                    <Mic size={18} strokeWidth={1.8} />
-                  )}
-                </span>
-
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[17px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {formatDate(log.date, isAmharic)}
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-11 w-11 shrink-0 aspect-square items-center justify-center rounded-full ${
+                      hasDanger
+                        ? "bg-[#9c3a29]/12 text-[#9c3a29] dark:bg-[#c65a45]/20 dark:text-[#f08b75]"
+                        : "bg-[#d9ab5e]/15 text-[#7b5b2b] dark:bg-[#e5be79]/15 dark:text-[#e5be79]"
+                    }`}
+                  >
+                    {hasDanger ? (
+                      <AlertTriangle size={18} strokeWidth={1.85} />
+                    ) : (
+                      <Mic size={18} strokeWidth={1.8} />
+                    )}
                   </span>
-                  <span className="mt-0.5 block text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    {formatTime(log.date, isAmharic)} · {sessionLabel} ·{" "}
-                    {t("logs.questionCount", { count: log.entries.length })}
-                  </span>
-                </span>
 
-                <ChevronRight
-                  size={18}
-                  strokeWidth={1.8}
-                  aria-hidden="true"
-                  className={`shrink-0 transition-all duration-200 group-hover:translate-x-0.5 ${
-                    hasDanger
-                      ? "text-[#a76a56] group-hover:text-[#9c3a29] dark:text-[#c98b7c] dark:group-hover:text-[#f08b75]"
-                      : "text-[#85735a] group-hover:text-[#6f5a35] dark:text-[#9c8b72] dark:group-hover:text-[#e5be79]"
-                  }`}
-                />
-              </button>
-            );
-          })}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[17px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
+                      {formatDate(log.date, isAmharic)}
+                    </span>
+                    <span className="mt-0.5 block text-[13px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
+                      {formatTime(log.date, isAmharic)} · {sessionLabel} ·{" "}
+                      {t("logs.questionCount", { count: log.entries.length })}
+                    </span>
+                  </span>
+
+                  <ChevronRight
+                    size={18}
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                    className={`shrink-0 transition-all duration-200 group-hover:translate-x-0.5 ${
+                      hasDanger
+                        ? "text-[#a76a56] group-hover:text-[#9c3a29] dark:text-[#c98b7c] dark:group-hover:text-[#f08b75]"
+                        : "text-[#85735a] group-hover:text-[#6f5a35] dark:text-[#9c8b72] dark:group-hover:text-[#e5be79]"
+                    }`}
+                  />
+                </button>
+              );
+            })
+          )}
         </section>
       </main>
 
