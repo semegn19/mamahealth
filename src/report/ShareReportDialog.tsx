@@ -4,6 +4,8 @@ import { AppLogo } from "../components/AppLogo";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslation } from "../components/languageStore";
 import { ModalDialog } from "../components/ModalDialog";
+import { showToast } from "../components/toastStore";
+import { reportsApi, getAccessToken } from "../api";
 
 type CopyState = "idle" | "copied" | "manual";
 
@@ -25,23 +27,45 @@ export function ShareReportDialog({
   const { t, isAmharic } = useTranslation();
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [shareFailed, setShareFailed] = useState(false);
+  const [customShareUrl, setCustomShareUrl] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const linkRef = useRef<HTMLInputElement>(null);
   const qrRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  const url =
+  const fallbackUrl =
     typeof window === "undefined"
-      ? `#report/${reportId}`
-      : `${window.location.origin}${window.location.pathname}#report/${reportId}`;
+      ? `/report/${reportId}`
+      : `${window.location.origin}/report/${reportId}`;
 
-  // Reset transient feedback each time it opens.
+  const url = customShareUrl || fallbackUrl;
+
+  // Reset transient feedback each time it opens, and fetch active share link if possible.
   useEffect(() => {
     if (!open) return;
     setCopyState("idle");
     setShareFailed(false);
-  }, [open]);
+
+    if (getAccessToken() && reportId && reportId.includes("-") && reportId.length > 20) {
+      reportsApi
+        .createShare(reportId, { consent: true, expires_in_hours: 24 })
+        .then((res) => {
+          if (res) {
+            let token = res.share_link_slug;
+            if (!token && res.share_url) {
+              token = res.share_url.split("/").pop();
+            }
+            if (token) {
+              setCustomShareUrl(`${window.location.origin}/report/${token}`);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn("Could not generate backend share link, using default:", err);
+        });
+    }
+  }, [open, reportId]);
 
   useEffect(() => {
     if (copyState !== "copied") return;
@@ -56,6 +80,7 @@ export function ShareReportDialog({
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
       await navigator.clipboard.writeText(url);
       setCopyState("copied");
+      showToast(t("reports.linkCopied"));
     } catch {
       // Let the user copy manually if the clipboard is blocked.
       linkRef.current?.focus();
@@ -103,7 +128,7 @@ export function ShareReportDialog({
       <div
         ref={panelRef}
         data-share-panel
-        className="report-sheet relative max-h-[calc(100dvh-2rem)] w-full max-w-[440px] overflow-y-auto overscroll-contain rounded-[30px] border border-white/80 bg-[#fbf6ec]/[0.98] p-6 shadow-[0_18px_60px_-20px_rgba(85,55,18,0.5)] backdrop-blur-xl dark:border-[#e5be79]/22 dark:bg-[#221c15]/[0.98] dark:shadow-[0_24px_64px_-18px_rgba(0,0,0,0.88)]"
+        className="report-sheet home-glass-warm relative max-h-[90dvh] w-full max-w-[440px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]"
       >
         <div className="flex items-start justify-between gap-4">
           <div>

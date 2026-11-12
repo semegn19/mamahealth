@@ -65,7 +65,9 @@ export function SupplementAdherence({ supplements }: { supplements: SupplementRe
         {supplements.map((supplement, index) => {
           const headingId = `${id}-${supplement.id}`;
           const percent = Math.min(100, Math.max(0, supplement.percent ?? 0));
-          const localizedName = t(`reports.supplementsMap.${supplement.name}`) || supplement.name;
+          const supKey = `reports.supplementsMap.${supplement.name}`;
+          const translatedName = t(supKey);
+          const localizedName = translatedName && translatedName !== supKey ? translatedName : supplement.name;
 
           return (
             <li key={supplement.id}>

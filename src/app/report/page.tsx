@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { AncReport } from "@/report/AncReport";
 
-/** /report shows the most recent (third) appointment. */
+/** /report shows the most recent antenatal care report. */
 export default function Page() {
-  return <AncReport reportId="third-appointment" />;
+  return <AncReport />;
 }
 
 export const metadata: Metadata = {

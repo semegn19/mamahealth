@@ -58,15 +58,20 @@ export type BackendSummaryResponse = {
 };
 
 export type ShareSummaryPayload = {
-  intended_audience?: string;
-  expires_hours?: number;
+  consent: boolean;
+  expires_in_hours?: number;
 };
 
 export type ShareSummaryResponse = {
-  share_id: string;
-  share_link_slug: string;
-  url: string;
+  id?: string;
+  share_id?: string;
+  share_url: string;
+  url?: string;
   expires_at: string;
+  qr_code_base64?: string | null;
+  qr_status?: string;
+  scope?: string;
+  share_link_slug?: string;
 };
 
 export const reportsApi = {
@@ -91,10 +96,13 @@ export const reportsApi = {
       method: "GET",
     }),
 
-  createShare: (summaryId: string, payload?: ShareSummaryPayload) =>
+  createShare: (summaryId: string, payload?: Partial<ShareSummaryPayload>) =>
     apiRequest<ShareSummaryResponse>(`/summary/${summaryId}/shares`, {
       method: "POST",
-      body: JSON.stringify(payload || {}),
+      body: JSON.stringify({
+        consent: true,
+        expires_in_hours: payload?.expires_in_hours ?? 24,
+      }),
     }),
 
   checkAutomaticSummary: () =>

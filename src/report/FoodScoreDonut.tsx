@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { Apple, Beef, Carrot, ChevronDown, Milk, Wheat } from "lucide-react";
-import { FOOD_GROUPS, FOOD_ITEM_COUNTS } from "./reportData";
+import { FOOD_GROUPS } from "./reportData";
 import { useCountUp, useInViewOnce } from "./useInViewOnce";
 import { useTranslation } from "../components/languageStore";
 
@@ -9,6 +9,7 @@ const ICONS = [Wheat, Beef, Milk, Apple, Carrot] as const;
 type FoodTotals = {
   counts: number[];
   score: number;
+  itemsByGroup?: Record<string, { name: string; times: number }[]>;
 };
 
 const SIZE = 320;
@@ -45,7 +46,7 @@ function AnimatedFoodCount({
  * Segmented donut with true gutters, rounded ends, in-segment icons,
  * and an expandable list of foods logged in each group.
  */
-export function FoodScoreDonut({ counts, score }: FoodTotals) {
+export function FoodScoreDonut({ counts, score, itemsByGroup }: FoodTotals) {
   const { t, isAmharic } = useTranslation();
   const uid = useId().replace(/:/g, "");
   const filterId = `food-lift-${uid}`;
@@ -79,7 +80,7 @@ export function FoodScoreDonut({ counts, score }: FoodTotals) {
       iconY: icon.y,
       Icon: ICONS[item.index],
       delay: item.index * 100,
-      foods: FOOD_ITEM_COUNTS[FOOD_GROUPS[item.index].name] ?? [],
+      foods: itemsByGroup?.[FOOD_GROUPS[item.index].name] ?? [],
     };
   });
 
@@ -195,93 +196,125 @@ export function FoodScoreDonut({ counts, score }: FoodTotals) {
       <div className="sm:order-1">
         <ul className="space-y-2">
           {segments.map((seg) => {
-            const open = openGroup === seg.name;
+            const hasFoods = seg.foods.length > 0;
+            const open = hasFoods && openGroup === seg.name;
             const panelId = `food-items-${seg.name.toLowerCase()}`;
-            const maxTimes = Math.max(...seg.foods.map((f) => f.times), 1);
+            const maxTimes = hasFoods ? Math.max(...seg.foods.map((f) => f.times), 1) : 1;
             const localizedGroupName = t(`reports.foodGroupsMap.${seg.name}`) || seg.name;
 
             return (
               <li key={seg.name} data-food-group={seg.name}>
-                <button
-                  type="button"
-                  onClick={() => toggle(seg.name)}
-                  aria-expanded={open}
-                  aria-controls={panelId}
-                  className={`flex w-full items-center gap-3 rounded-[16px] px-2 py-2 text-left transition hover:bg-white/55 dark:hover:bg-white/6 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79] ${
-                    open ? "bg-white/70 dark:bg-white/8" : ""
-                  }`}
-                >
-                  <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/75 text-[#4a3f30] shadow-[0_2px_6px_rgba(120,85,30,0.12)] dark:bg-[#2c231a] dark:text-[#f0e4ce]">
-                    <seg.Icon size={16} strokeWidth={1.9} aria-hidden="true" />
-                    <span
-                      aria-hidden="true"
-                      className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#fbf6ec] dark:ring-[#221c15]"
-                      style={{ background: seg.color }}
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] text-[#4a3f30] dark:text-[#f0e4ce]">
-                      {localizedGroupName}
-                    </span>
-                    <span className="block text-[11px] text-[#9b8a6f] dark:text-[#9c8b72]">
-                      {Math.round((seg.count / total) * 100)}{isAmharic ? "% ቀናት" : "% of days"}
-                    </span>
-                  </span>
-                  <span className="text-[15px] font-semibold tabular-nums text-[#3b3226] dark:text-[#f5ede0]">
-                    <span className="sr-only">{seg.count}</span>
-                    <span aria-hidden="true">
-                      <AnimatedFoodCount value={seg.count} active={inView} delay={seg.delay} />
-                    </span>
-                  </span>
-                  <ChevronDown
-                    size={16}
-                    strokeWidth={1.8}
-                    aria-hidden="true"
-                    className={`shrink-0 text-[#9b8a6f] dark:text-[#9c8b72] transition-transform duration-300 ${
-                      open ? "rotate-180" : ""
+                {hasFoods ? (
+                  <button
+                    type="button"
+                    onClick={() => toggle(seg.name)}
+                    aria-expanded={open}
+                    aria-controls={panelId}
+                    className={`flex w-full items-center gap-3 rounded-[16px] px-2 py-2 text-left transition hover:bg-white/55 dark:hover:bg-white/6 active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79] ${
+                      open ? "bg-white/70 dark:bg-white/8" : ""
                     }`}
-                  />
-                </button>
+                  >
+                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/75 text-[#4a3f30] shadow-[0_2px_6px_rgba(120,85,30,0.12)] dark:bg-[#2c231a] dark:text-[#f0e4ce]">
+                      <seg.Icon size={16} strokeWidth={1.9} aria-hidden="true" />
+                      <span
+                        aria-hidden="true"
+                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#fbf6ec] dark:ring-[#221c15]"
+                        style={{ background: seg.color }}
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] text-[#4a3f30] dark:text-[#f0e4ce]">
+                        {localizedGroupName}
+                      </span>
+                      <span className="block text-[11px] text-[#9b8a6f] dark:text-[#9c8b72]">
+                        {Math.round((seg.count / total) * 100)}{isAmharic ? "% ቀናት" : "% of days"}
+                      </span>
+                    </span>
+                    <span className="text-[15px] font-semibold tabular-nums text-[#3b3226] dark:text-[#f5ede0]">
+                      <span className="sr-only">{seg.count}</span>
+                      <span aria-hidden="true">
+                        <AnimatedFoodCount value={seg.count} active={inView} delay={seg.delay} />
+                      </span>
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                      className={`shrink-0 text-[#9b8a6f] dark:text-[#9c8b72] transition-transform duration-300 ${
+                        open ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                ) : (
+                  <div className="flex w-full items-center gap-3 rounded-[16px] px-2 py-2 text-left">
+                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/75 text-[#4a3f30] shadow-[0_2px_6px_rgba(120,85,30,0.12)] dark:bg-[#2c231a] dark:text-[#f0e4ce]">
+                      <seg.Icon size={16} strokeWidth={1.9} aria-hidden="true" />
+                      <span
+                        aria-hidden="true"
+                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#fbf6ec] dark:ring-[#221c15]"
+                        style={{ background: seg.color }}
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] text-[#4a3f30] dark:text-[#f0e4ce]">
+                        {localizedGroupName}
+                      </span>
+                      <span className="block text-[11px] text-[#9b8a6f] dark:text-[#9c8b72]">
+                        {Math.round((seg.count / total) * 100)}{isAmharic ? "% ቀናት" : "% of days"}
+                      </span>
+                    </span>
+                    <span className="text-[15px] font-semibold tabular-nums text-[#3b3226] dark:text-[#f5ede0]">
+                      <span className="sr-only">{seg.count}</span>
+                      <span aria-hidden="true">
+                        <AnimatedFoodCount value={seg.count} active={inView} delay={seg.delay} />
+                      </span>
+                    </span>
+                  </div>
+                )}
 
-                <div
-                  id={panelId}
-                  role="region"
-                  aria-label={`Foods in ${localizedGroupName}`}
-                  hidden={!open}
-                  className={open ? "food-expand px-2 pb-2 pt-1" : "hidden"}
-                >
-                  <ul className="space-y-2 rounded-[14px] bg-[#fffaf1]/80 px-3 py-2.5 dark:bg-[#18130e]/85">
-                    {seg.foods.map((food) => {
-                      const localizedFoodName = t(`reports.foodItemsMap.${food.name}`) || food.name;
-                      return (
-                        <li key={food.name} className="flex items-center gap-2.5">
-                          <span className="w-[108px] shrink-0 text-[12.5px] text-[#4a3f30] dark:text-[#dfcfb6]">
-                            {localizedFoodName}
-                          </span>
-                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#ecdfc5] dark:bg-[#31271c]">
-                            <span
-                              className="block h-full rounded-full"
-                              style={{
-                                width: `${(food.times / maxTimes) * 100}%`,
-                                background: seg.color,
-                              }}
-                            />
-                          </span>
-                          <span className="w-[52px] shrink-0 text-right text-[11.5px] tabular-nums text-[#6f6149] dark:text-[#b9a88e]">
-                            {food.times}×
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
+                {hasFoods && (
+                  <div
+                    id={panelId}
+                    role="region"
+                    aria-label={`Foods in ${localizedGroupName}`}
+                    hidden={!open}
+                    className={open ? "food-expand px-2 pb-2 pt-1" : "hidden"}
+                  >
+                    <ul className="space-y-2 rounded-[14px] bg-[#fffaf1]/80 px-3 py-2.5 dark:bg-[#18130e]/85">
+                      {seg.foods.map((food) => {
+                        const localizedFoodName = t(`reports.foodItemsMap.${food.name}`) || food.name;
+                        return (
+                          <li key={food.name} className="flex items-center gap-2.5">
+                            <span className="w-[108px] shrink-0 text-[12.5px] text-[#4a3f30] dark:text-[#dfcfb6]">
+                              {localizedFoodName}
+                            </span>
+                            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#ecdfc5] dark:bg-[#31271c]">
+                              <span
+                                className="block h-full rounded-full"
+                                style={{
+                                  width: `${(food.times / maxTimes) * 100}%`,
+                                  background: seg.color,
+                                }}
+                              />
+                            </span>
+                            <span className="w-[52px] shrink-0 text-right text-[11.5px] tabular-nums text-[#6f6149] dark:text-[#b9a88e]">
+                              {food.times}×
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
               </li>
             );
           })}
         </ul>
-        <p className="mt-3 text-[12.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-          {t("reports.tapGroupNote")}
-        </p>
+        {segments.some((s) => s.foods.length > 0) && (
+          <p className="mt-3 text-[12.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
+            {t("reports.tapGroupNote")}
+          </p>
+        )}
       </div>
     </div>
   );

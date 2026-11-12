@@ -10,6 +10,7 @@ import {
   type DayRecord,
 } from "./reportData";
 import { useCountUp, useInViewOnce } from "./useInViewOnce";
+import { localizeSymptom } from "./reportMetrics";
 
 /* ------------------------------------------------------------------ */
 /* Symptom severity calendar                                           */
@@ -20,11 +21,15 @@ export function SeverityCalendar({
   onSelectDay,
   detailsId,
   dangerCountsByDay,
+  cells,
+  periodLabel,
 }: {
   selectedDay: number | null;
   onSelectDay: (day: DayRecord) => void;
   detailsId: string;
   dangerCountsByDay?: Map<number, number>;
+  cells?: (DayRecord | null)[];
+  periodLabel?: string;
 }) {
   const { t, isAmharic } = useTranslation();
   const { ref, inView } = useInViewOnce<HTMLDivElement>(0.2);
@@ -32,8 +37,10 @@ export function SeverityCalendar({
     ? ["ሰ", "ማ", "ረ", "ሐ", "ዓ", "ቅ", "እ"]
     : ["M", "T", "W", "T", "F", "S", "S"];
 
+  const displayCells = cells ?? CALENDAR_CELLS;
+
   return (
-    <div ref={ref} role="group" aria-label={`Daily symptoms for ${PERIOD.label}`}>
+    <div ref={ref} role="group" aria-label={`Daily symptoms for ${periodLabel || PERIOD.label}`}>
       <div className="grid grid-cols-7 gap-1.5" aria-hidden="true">
         {weekdays.map((d, i) => (
           <span
@@ -45,7 +52,7 @@ export function SeverityCalendar({
         ))}
       </div>
       <div className="mt-1.5 grid grid-cols-7 gap-1.5">
-        {CALENDAR_CELLS.map((day, index) => {
+        {displayCells.map((day, index) => {
           if (!day) return <span key={`empty-${index}`} aria-hidden="true" />;
 
           const severity = worstSeverity(day);
@@ -57,7 +64,6 @@ export function SeverityCalendar({
           };
           if (isDanger) {
             cellStyle.backgroundColor = "#a94432";
-            cellStyle.boxShadow = "0 3px 10px -3px rgba(156,58,41,0.55)";
           } else if (severity) {
             cellStyle.backgroundColor = SEVERITY_LEVELS[severity].color;
           }
@@ -85,17 +91,17 @@ export function SeverityCalendar({
               aria-pressed={selected}
               aria-controls={detailsId}
               title={`${dateLabel}: ${description}`}
-              className={`report-severity-cell ${inView ? "is-visible" : "is-pending"} relative flex aspect-square min-h-10 w-full cursor-pointer items-center justify-center rounded-[9px] border text-[12px] font-semibold tabular-nums transition-[box-shadow,transform] duration-200 hover:ring-1 hover:ring-[#6f4b1d] dark:hover:ring-[#e5be79] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4a3f30] dark:focus-visible:outline-[#e5be79] motion-reduce:transition-none ${
+              className={`report-severity-cell ${inView ? "is-visible" : "is-pending"} relative flex aspect-square min-h-10 w-full cursor-pointer items-center justify-center rounded-[9px] border text-[12px] font-semibold tabular-nums transition-all duration-200 hover:scale-105 hover:z-10 hover:ring-2 hover:ring-[#6f4b1d] dark:hover:ring-[#e5be79] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4a3f30] dark:focus-visible:outline-[#e5be79] motion-reduce:transition-none ${
                 !day.recorded
                   ? "border-dashed border-[#b5a07c] text-[#6f6149] dark:border-[#66543f] dark:text-[#9c8b72]"
                   : isDanger
-                    ? "border-[#883022] text-[#fff7f2]"
+                    ? "border-[#883022] text-[#fff7f2] shadow-[0_3px_10px_-3px_rgba(156,58,41,0.55)]"
                     : severity
                       ? "border-transparent text-[#2e2519]"
                       : "border-[#e2d3b4] bg-[#faf5eb] text-[#4a3f30] dark:border-[#3d3123] dark:bg-[#19140f] dark:text-[#dfcfb6]"
               } ${
                 selected
-                  ? "ring-2 ring-[#6f4b1d] ring-offset-2 ring-offset-[#fbf6ec] dark:ring-[#e5be79] dark:ring-offset-[#221c15]"
+                  ? "z-10 scale-105 font-bold ring-2 ring-[#6f4b1d] ring-offset-2 ring-offset-[#fbf6ec] shadow-md dark:ring-[#e5be79] dark:ring-offset-[#221c15]"
                   : ""
               }`}
               style={cellStyle as CSSProperties}
@@ -134,7 +140,7 @@ function SymptomBarRow({
   const animatedCount = Math.round(
     useCountUp(row.count, { active, duration: 850, delay: index * 90 }),
   );
-  const localizedName = t(`reports.symptomsMap.${row.name}`) || row.name;
+  const localizedName = localizeSymptom(row.name, isAmharic, t);
 
   return (
     <li
