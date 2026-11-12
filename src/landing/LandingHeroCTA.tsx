@@ -11,7 +11,6 @@ export function LandingHeroCTA() {
 
   useEffect(() => {
     router.prefetch("/login");
-    router.prefetch("/home");
   }, [router]);
 
   return (

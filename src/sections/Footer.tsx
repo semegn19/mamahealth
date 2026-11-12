@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AppLogo } from "@/components/AppLogo";
 import { useTranslation } from "@/components/languageStore";
 
@@ -127,14 +128,14 @@ export function Footer() {
               <p className="text-[12px] uppercase tracking-[0.28em] text-[#8d6a2a] dark:text-[#dfb870]">
                 {t("landing.growWithUs")}
               </p>
-              <a
-                href="#home"
+              <Link
+                href="/login"
                 className="group relative mt-3 inline-block text-[clamp(21px,2.2vw,30px)] font-light tracking-[-0.025em] text-[#4a3f30] transition-colors duration-300 hover:text-[#8d6a2a] dark:text-[#f5ede0] dark:hover:text-[#e5be79]"
               >
                 <span className="relative after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 group-hover:after:scale-x-100 group-focus-visible:after:scale-x-100">
                   {t("nav.waitlist")}
                 </span>
-              </a>
+              </Link>
               <p className="mt-2 text-[16px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
                 {t("landing.growWithUsSub")}
               </p>

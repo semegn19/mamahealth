@@ -26,7 +26,6 @@ export function LandingPage() {
 
   useEffect(() => {
     router.prefetch("/login");
-    router.prefetch("/home");
   }, [router]);
 
   /** Nav items scroll to their section instead of touching the hash router. */
@@ -100,7 +99,7 @@ export function LandingPage() {
             </a>
 
             <Link
-              href="/home"
+              href="/login"
               className="rounded-full bg-white/90 px-5 py-2.5 text-[13px] font-medium text-[#3d3326] shadow-[0_8px_30px_-10px_rgba(180,140,70,0.45)] backdrop-blur transition hover:bg-white hover:shadow-[0_12px_40px_-10px_rgba(180,140,70,0.6)] dark:border dark:border-[#e5be79]/28 dark:bg-[#2a2118]/90 dark:text-[#f5ede0] dark:shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] dark:hover:bg-[#352a1e]"
             >
               Join the waitlist
