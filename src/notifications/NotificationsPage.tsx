@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bell,
   CalendarDays,
@@ -12,28 +12,43 @@ import {
   Pill,
 } from "lucide-react";
 import { BottomNav } from "../components/BottomNav";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { useNotifications, type NotificationItem } from "./notificationsData";
 import { useTranslation } from "../components/languageStore";
 
 export function NotificationsPage() {
   const { t, isAmharic } = useTranslation();
-  const { items, markAllRead } = useNotifications();
+  const { items, markAllRead, markRead } = useNotifications();
   const [tab, setTab] = useState<"unread" | "read">("unread");
 
-  // Requirement: "when users go to this page the first time it assumes they read all the notifications
-  // so after they leave it takes those notifications to the read tab"
-  const pendingMarkAllReadOnLeave = useRef(true);
+  const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+  const nowTs = Date.now();
+  const twoWeeksAgo = nowTs - TWO_WEEKS_MS;
 
-  useEffect(() => {
-    return () => {
-      if (pendingMarkAllReadOnLeave.current) {
-        markAllRead();
-      }
-    };
-  }, []);
+  // Unread notifications: newest first
+  const unreadItems = useMemo(() => {
+    return items
+      .filter((n) => !n.read)
+      .sort((a, b) => (b.timestamp ?? nowTs) - (a.timestamp ?? nowTs));
+  }, [items, nowTs]);
 
-  const unreadItems = items.filter((n) => !n.read);
-  const readItems = items.filter((n) => n.read);
+  // Read notifications:
+  // 1. Only from the last 2 weeks (>= twoWeeksAgo)
+  // 2. In reverse order: sooner dates first, later dates last (ascending by timestamp)
+  const readItems = useMemo(() => {
+    return items
+      .filter((n) => {
+        if (!n.read) return false;
+        const ts = n.timestamp ?? nowTs;
+        return ts >= twoWeeksAgo;
+      })
+      .sort((a, b) => {
+        const tsA = a.timestamp ?? nowTs;
+        const tsB = b.timestamp ?? nowTs;
+        return tsA - tsB; // Sooner/earlier dates first, later dates last
+      });
+  }, [items, twoWeeksAgo, nowTs]);
+
   const currentList = tab === "unread" ? unreadItems : readItems;
 
   const getCategoryIcon = (category: NotificationItem["category"]) => {
@@ -59,7 +74,7 @@ export function NotificationsPage() {
         <div className="absolute -left-24 bottom-[5%] h-[300px] w-[300px] rounded-full bg-[#f7dfb3] opacity-50 blur-[100px] dark:bg-[#6e4c1b] dark:opacity-16" />
       </div>
 
-      <main className="relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[720px] md:px-8">
+      <main className="page-enter relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[720px] md:px-8">
         {/* Header bar */}
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -78,20 +93,23 @@ export function NotificationsPage() {
             </div>
           </div>
 
-          {unreadItems.length > 0 && (
-            <button
-              type="button"
-              onClick={() => markAllRead()}
-              className="flex items-center gap-1.5 rounded-full border border-[#d8c6a4] bg-white/60 px-3.5 py-2 text-[12.5px] font-medium text-[#6f5a35] transition hover:bg-white active:scale-95 dark:border-[#4a3c2c] dark:bg-[#231c15]/85 dark:text-[#e5be79] dark:hover:bg-[#2d241b]"
-            >
-              <CheckCheck size={15} strokeWidth={1.9} />
-              <span>{t("notifications.markAllRead")}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2.5">
+            {unreadItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => markAllRead()}
+                className="flex items-center gap-1.5 rounded-full border border-[#d8c6a4] bg-white/60 px-3.5 py-2 text-[12.5px] font-medium text-[#6f5a35] transition hover:bg-white active:scale-95 dark:border-[#4a3c2c] dark:bg-[#231c15]/85 dark:text-[#e5be79] dark:hover:bg-[#2d241b]"
+              >
+                <CheckCheck size={15} strokeWidth={1.9} />
+                <span>{t("notifications.markAllRead")}</span>
+              </button>
+            )}
+            <LanguageSwitcher />
+          </div>
         </header>
 
         {/* Sliding Segmented Pill: Unread / Read */}
-        <div className="mt-7">
+        <div className="mt-7 page-stagger-1">
           <div className="relative flex rounded-full border border-[#d8c6a4]/80 bg-[#e7dcc7]/60 p-1 backdrop-blur-md dark:border-[#46392a] dark:bg-[#1e1812]/85">
             {/* Sliding highlight indicator */}
             <span
@@ -168,7 +186,7 @@ export function NotificationsPage() {
               </p>
             </div>
           ) : (
-            currentList.map((notif) => {
+            currentList.map((notif: NotificationItem, index: number) => {
               const displayTitle = isAmharic ? (notif.title_am ?? notif.title) : notif.title;
               const displayMessage = isAmharic ? (notif.message_am ?? notif.message) : notif.message;
               const displayTime = isAmharic ? (notif.time_am ?? notif.time) : notif.time;
@@ -177,9 +195,13 @@ export function NotificationsPage() {
                 <article
                   key={notif.id}
                   data-dashboard-card
-                  className={`relative overflow-hidden rounded-[24px] border p-4 sm:p-5 text-left transition-all backdrop-blur-xl ${
+                  style={{ "--report-item-delay": `${Math.min(index * 60, 360)}ms` } as React.CSSProperties}
+                  onClick={() => {
+                    if (!notif.read) markRead(notif.id);
+                  }}
+                  className={`report-list-card relative overflow-hidden rounded-[24px] border p-4 sm:p-5 text-left transition-all backdrop-blur-xl ${
                     !notif.read
-                      ? "border-[#c9a35d]/50 bg-gradient-to-br from-white/95 to-[#fbf5e8]/90 shadow-[0_12px_30px_-18px_rgba(112,78,28,0.45)] dark:border-[#e5be79]/40 dark:from-[#292118]/96 dark:to-[#1f1912]/94 dark:shadow-[0_14px_34px_-18px_rgba(0,0,0,0.8)]"
+                      ? "cursor-pointer border-[#c9a35d]/50 bg-gradient-to-br from-white/95 to-[#fbf5e8]/90 shadow-[0_12px_30px_-18px_rgba(112,78,28,0.45)] dark:border-[#e5be79]/40 dark:from-[#292118]/96 dark:to-[#1f1912]/94 dark:shadow-[0_14px_34px_-18px_rgba(0,0,0,0.8)]"
                       : "border-white/60 bg-white/60 shadow-[0_4px_16px_-10px_rgba(112,78,28,0.2)] opacity-85 dark:border-[#3d3123]/80 dark:bg-[#1c1611]/75 dark:shadow-[0_8px_22px_-14px_rgba(0,0,0,0.7)]"
                   }`}
                 >
@@ -190,7 +212,7 @@ export function NotificationsPage() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11.5px] font-medium uppercase tracking-[0.12em] text-[#85735a] dark:text-[#9c8b72]">
+                        <span className="text-[12.5px] font-normal text-[#85735a] dark:text-[#9c8b72]">
                           {displayTime}
                         </span>
                         {!notif.read && (
