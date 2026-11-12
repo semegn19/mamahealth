@@ -377,17 +377,11 @@ async function persistCheckinToBackend(
     }
 
     // Auto-generate summary on backend so ANC report is ready immediately
+    // Note: Do NOT inspect the period summary's aggregated danger signs here.
+    // The ANC summary aggregates the full 14-day contact period; checking it here would
+    // falsely trigger a danger warning on every routine check-in if the user had a danger sign in a past check-in.
     try {
-      const summary = await reportsApi.generateSummary();
-      if (summary && summary.id) {
-        const dangers = summary.content_json?.danger_signs || summary.content_json?.dangers;
-        if (Array.isArray(dangers) && dangers.length > 0) {
-          dangerTriggered = true;
-          const s0 = dangers[0];
-          activeDangerSign = activeDangerSign || resolveDangerSign(s0?.category, s0?.raw_text || s0?.category_display_en);
-          onDangerTriggered?.(activeDangerSign);
-        }
-      }
+      await reportsApi.generateSummary();
     } catch (sumErr) {
       console.warn("Could not auto-generate report summary:", sumErr);
     }
