@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "NEXT_DIST_DIR=.next-build next build",
-    "start": "NEXT_DIST_DIR=.next-build next start"
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.107.1",
     "clsx": "2.1.1",
+    "kenat": "^4.0.0",
     "lucide-react": "^1.55.0",
     "next": "^16.4.3",
     "qrcode.react": "^4.2.0",
