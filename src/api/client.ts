@@ -44,6 +44,40 @@ export function clearTokens(): void {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
+/**
+ * Completely clears all local user session caches to prevent
+ * notifications, check-ins, or profile data leaking between accounts.
+ */
+export function clearUserSessionData(): void {
+  if (typeof window === "undefined") return;
+  clearTokens();
+  const keysToRemove = [
+    "mama-health-notifications-v1",
+    "aurelia-notifications-v1",
+    "mama-health-profile-v1",
+    "aurelia-profile-v1",
+    "mama-health-calendar-items-v1",
+    "aurelia-calendar-items-v1",
+    "mama-health-checkin-history-v1",
+    "mama-health-onboarding-v1",
+    "aurelia-onboarding-v1",
+    "mama-health-latest-report-v1",
+    "mama-health-due-date-v1",
+    "aurelia-due-date-v1",
+    "mama-health-quick-food-v1",
+    "aurelia-quick-food-v1",
+    "mama-health-quick-supplements-v1",
+    "aurelia-quick-supplements-v1",
+  ];
+  for (const k of keysToRemove) {
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      // Ignore storage access errors
+    }
+  }
+}
+
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
 

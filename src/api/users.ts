@@ -132,7 +132,25 @@ export type OnboardingSubmitPayload = {
   hospital?: string | null;
 };
 
+export type GestationalAgeCalculatePayload = {
+  pregnancy_counting_method?: "lnmp" | "ultrasound" | "manual" | string;
+  lnmp_date?: string | null;
+  ultrasound_date?: string | null;
+  ultrasound_weeks?: number | null;
+  ultrasound_days?: number | null;
+  manual_gestational_weeks?: number | null;
+  manual_gestational_days?: number | null;
+  as_of_date?: string | null;
+};
+
 export const usersApi = {
+  async calculateGestationalAge(payload: GestationalAgeCalculatePayload): Promise<CurrentPregnancyStatus> {
+    return apiRequest<CurrentPregnancyStatus>("/users/calculate-gestational-age", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   async getMe(): Promise<UserProfileResponse> {
     return apiRequest<UserProfileResponse>("/users/me");
   },
@@ -209,6 +227,36 @@ export const usersApi = {
   async deleteAppointment(): Promise<{ status: string }> {
     return apiRequest<{ status: string }>("/users/me/appointment", {
       method: "DELETE",
+    });
+  },
+
+  async verifyFood(payload: {
+    food_groups?: Array<"grains" | "proteins" | "dairy" | "fruits_and_vegetables">;
+    raw_text?: string;
+    items?: string[];
+  }): Promise<{ status: string; food_groups: string[]; raw_text: string; logged_at: string }> {
+    const key = `food-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    return apiRequest("/users/me/food/verify", {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async verifySupplement(payload: {
+    supplement_id?: string;
+    supplement_name?: string;
+    taken_today: boolean;
+    raw_text?: string;
+  }): Promise<{ status: string; supplement_name: string; taken_today: boolean; logged_at: string }> {
+    const key = `supp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const url = payload.supplement_id
+      ? `/users/me/supplements/${payload.supplement_id}/verify`
+      : "/users/me/supplements/verify";
+    return apiRequest(url, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(payload),
     });
   },
 };

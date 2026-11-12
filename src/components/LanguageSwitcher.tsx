@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Check, Globe } from "lucide-react";
 import { useLanguage } from "./languageStore";
+import { showToast } from "./toastStore";
 
 /** Language control shared by the home, report, and settings headers. */
 export function LanguageSwitcher() {
@@ -40,12 +41,12 @@ export function LanguageSwitcher() {
         aria-label={`Switch language, currently ${currentOption.label}`}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        className="home-icon-solid relative flex h-12 w-12 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#dfb870]"
+        className="home-icon-solid relative flex h-12 w-12 min-h-12 min-w-12 shrink-0 aspect-square items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#dfb870]"
       >
         <Globe size={19} strokeWidth={1.8} aria-hidden="true" />
         <span
           aria-hidden="true"
-          className="absolute -bottom-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#3b3226] px-1 text-[10px] font-semibold leading-none text-[#fbe7b8] ring-2 ring-white dark:bg-[#e5be79] dark:text-[#231b12] dark:ring-[#221c15]"
+          className="absolute -bottom-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-[#d9ab5e]/60 bg-[#fbe7b8] px-1 text-[10.5px] font-bold leading-none text-[#6f5a35] shadow-sm ring-2 ring-[#f3ecdf] dark:border-[#e5be79]/50 dark:bg-[#e5be79]/30 dark:text-[#fbe7b8] dark:ring-[#15120e]"
         >
           {language === "am" ? "አ" : "E"}
         </span>
@@ -58,8 +59,8 @@ export function LanguageSwitcher() {
           aria-label="Language settings"
           className="absolute right-0 top-[calc(100%+10px)] z-50 w-60 rounded-[22px] border border-white/85 bg-[#fffaf0]/95 p-3.5 text-[#3b3226] shadow-[0_16px_40px_-14px_rgba(88,59,20,0.27)] backdrop-blur-xl dark:border-[#e5be79]/22 dark:bg-[#231c15]/96 dark:text-[#f5ede0] dark:shadow-[0_20px_48px_-14px_rgba(0,0,0,0.75)]"
         >
-          <p className="px-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[#8d6a2a] dark:text-[#dfb870]">
-            Language · ቋንቋ
+          <p className="px-1.5 text-[13px] font-medium text-[#8d6a2a] dark:text-[#dfb870]">
+            {language === "am" ? "ቋንቋ" : "Language"}
           </p>
           <ul role="listbox" aria-label="Choose language" className="mt-2.5 space-y-1.5">
             {options.map((opt) => {
@@ -71,6 +72,7 @@ export function LanguageSwitcher() {
                     onClick={() => {
                       setLanguage(opt.code);
                       setOpen(false);
+                      showToast(opt.code === "am" ? "ቋንቋ ወደ አማርኛ ተቀይሯል" : "Language switched to English");
                     }}
                     className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
                       selected

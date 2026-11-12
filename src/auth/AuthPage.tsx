@@ -18,36 +18,12 @@ import { useProfile } from "../settings/profileStore";
 import { useTranslation } from "../components/languageStore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { authApi, usersApi, ApiError } from "../api";
-
-/* ------------------------------------------------------------------ */
-/* Lightweight prototype accounts (stored locally, never sent anywhere) */
-/* ------------------------------------------------------------------ */
-
-type Account = { firstName: string; lastName: string; email: string; password: string };
-const ACCOUNTS_KEY = "mama-health-accounts-v1";
-const LEGACY_ACCOUNTS_KEY = "aurelia-accounts-v1";
-
-function loadAccounts(): Account[] {
-  try {
-    const raw = localStorage.getItem(ACCOUNTS_KEY) || localStorage.getItem(LEGACY_ACCOUNTS_KEY);
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed as Account[];
-    }
-  } catch {
-    // Storage may be unavailable.
-  }
-  return [];
-}
-
-function saveAccounts(accounts: Account[]) {
-  try {
-    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-  } catch {
-    // In-memory only.
-  }
-}
+import {
+  authApi,
+  ApiError,
+  clearUserSessionData,
+} from "../api";
+import { clearNotifications } from "../notifications/notificationsData";
 
 /* ------------------------------------------------------------------ */
 /* Shared pieces                                                       */
@@ -186,7 +162,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
   const router = useRouter();
   const { t } = useTranslation();
-  const { update } = useProfile();
+  const { update, resetAll } = useProfile();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -216,16 +192,30 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
     setErrors({});
   }, [initialMode]);
 
+  useEffect(() => {
+    const handlePop = () => {
+      const isReg = typeof window !== "undefined" && window.location.pathname.includes("register");
+      setMode(isReg ? "register" : "login");
+      setErrors({});
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
+
   const switchMode = (next: Mode) => {
     if (next === mode) return;
     setSwap(true);
     setErrors({});
     setVerificationSent(false);
+    if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => {
-      router.push(next === "login" ? "/login" : "/register");
+      setMode(next);
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", next === "login" ? "/login" : "/register");
+      }
       setPassword("");
       setSwap(false);
-    }, 180);
+    }, 160);
   };
 
   const validate = () => {
@@ -243,60 +233,58 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!validate()) return;
     setLoading(true);
 
-    timerRef.current = window.setTimeout(async () => {
-      const normalisedEmail = email.trim().toLowerCase();
+    const normalisedEmail = email.trim().toLowerCase();
 
-      if (mode === "register") {
-        try {
-          await authApi.signup(normalisedEmail, password);
-          // Store First Name + Last Name in client profile state upon signup (User Decision 2)
-          update({ name: `${firstName.trim()} ${lastName.trim()}`, email: normalisedEmail });
-          setLoading(false);
-          // Show calm "Verification Email Sent" screen (User Decision 3)
-          setVerificationSent(true);
-        } catch (err: unknown) {
-          setLoading(false);
-          const msg = err instanceof ApiError ? err.message : t("auth.accountExistsError");
-          setErrors({ email: msg });
-        }
-        return;
-      }
-
-      // Login mode
+    if (mode === "register") {
       try {
-        await authApi.login(normalisedEmail, password);
-        try {
-          const me = await usersApi.getMe();
-          if (me.name) {
-            update({ name: me.name, email: me.email || normalisedEmail });
-          } else {
-            update({ email: me.email || normalisedEmail });
-          }
+        clearUserSessionData();
+        clearNotifications();
+        resetAll();
+        const signupRes = await authApi.signup(normalisedEmail, password);
+        update({ name: `${firstName.trim()} ${lastName.trim()}`, email: normalisedEmail });
+        
+        // In production backend, signup requires email confirmation (HTTP 202 status=verification_required)
+        if (signupRes.status === "verification_required") {
+          setLoading(false);
+          setVerificationSent(true);
+          return;
+        }
 
-          timerRef.current = window.setTimeout(() => {
-            if (!me.onboarding_completed) {
-              router.push("/onboarding");
-            } else {
-              router.push("/splash");
-            }
-          }, 700);
+        // If email confirmation was disabled or session is immediately allowed:
+        try {
+          await authApi.login(normalisedEmail, password);
+          setLoading(false);
+          router.replace("/splash");
         } catch {
-          update({ email: normalisedEmail });
-          timerRef.current = window.setTimeout(() => {
-            router.push("/splash");
-          }, 700);
+          setLoading(false);
+          setVerificationSent(true);
         }
       } catch (err: unknown) {
         setLoading(false);
-        const msg = err instanceof ApiError ? err.message : t("auth.invalidCredentialsError");
-        setErrors({ password: msg });
+        const msg = err instanceof ApiError ? err.message : t("auth.accountExistsError");
+        setErrors({ email: msg });
       }
-    }, 750);
+      return;
+    }
+
+    // Login mode
+    try {
+      clearUserSessionData();
+      clearNotifications();
+      resetAll();
+      await authApi.login(normalisedEmail, password);
+      // Immediately navigate to splash screen to authenticate, hydrate user data, and route
+      router.replace("/splash");
+    } catch (err: unknown) {
+      setLoading(false);
+      const msg = err instanceof ApiError ? err.message : t("auth.invalidCredentialsError");
+      setErrors({ password: msg });
+    }
   };
 
   const isRegister = mode === "register";
@@ -470,16 +458,6 @@ export function AuthPage({ initialMode = "login" }: { initialMode?: Mode }) {
               >
                 {isRegister ? t("auth.signIn") : t("auth.createAccount")}
               </button>
-            </p>
-
-            <p className="mt-2.5 text-center">
-              <Link
-                href={isRegister ? "/onboarding" : "/splash"}
-                prefetch={true}
-                className="rounded-full px-3 py-1.5 text-[12.5px] font-medium text-[#9b8a6f] underline decoration-[#c9a35d]/40 underline-offset-4 transition-colors hover:text-[#4a3f30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#9c8b72] dark:hover:text-[#f5ede0] dark:focus-visible:outline-[#e5be79]"
-              >
-                {t("auth.skip")}
-              </Link>
             </p>
           </form>
           </>

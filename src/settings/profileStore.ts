@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from "react";
 
 /* ------------------------------------------------------------------ */
-/* A tiny shared profile/settings store, persisted to localStorage so  */
-/* changes (like the name) show across the app immediately.            */
+/* In-memory shared profile/settings store.                           */
+/* All profile data is fetched directly from and saved to the backend. */
 /* ------------------------------------------------------------------ */
 
 export type Supplement = {
@@ -12,6 +12,8 @@ export type Supplement = {
   reminderTime: string;
 };
 
+export type CalendarSystem = "ethiopian" | "gregorian";
+
 export type Profile = {
   name: string;
   email: string;
@@ -19,76 +21,77 @@ export type Profile = {
   supplements: Supplement[];
   hospital?: string;
   stageSummary?: string;
+  calendarSystem?: CalendarSystem;
+  gestationalAgeWeeks?: number;
+  gestationalAgeDays?: number;
+  trimester?: string;
+  edd?: string;
+  lnmpDate?: string;
+  avatarIndex?: number;
 };
 
-const KEY = "mama-health-profile-v1";
-const LEGACY_KEY = "aurelia-profile-v1";
 const CHANGE_EVENT = "mama-health-profile-change";
 
-import { MOCK_DEFAULT_PROFILE } from "../mock/profile";
+export const DEFAULT_PROFILE: Profile = {
+  name: "",
+  email: "",
+  nextAncDate: "",
+  supplements: [],
+  calendarSystem: "ethiopian",
+};
 
-export const DEFAULT_PROFILE: Profile = MOCK_DEFAULT_PROFILE;
-
-let cachedRawProfile: string | null = null;
 let cachedProfile: Profile = DEFAULT_PROFILE;
 
-function getProfileSnapshot(): Profile {
-  if (typeof window === "undefined") return DEFAULT_PROFILE;
-  try {
-    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
-    if (raw === cachedRawProfile) {
-      return cachedProfile;
+function sanitizeText(val: unknown, mockVal: string): string {
+  if (typeof val !== "string") return "";
+  const trimmed = val.trim();
+  if (!trimmed || trimmed.toLowerCase() === mockVal.toLowerCase()) return "";
+  return trimmed;
+}
+
+function mergeProfiles(current: Profile, patch: Partial<Profile>): Profile {
+  const cleanPatch: Partial<Profile> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) {
+      (cleanPatch as any)[key] = value;
     }
-    cachedRawProfile = raw;
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<Profile>;
-      cachedProfile = {
-        name: typeof parsed.name === "string" && parsed.name.trim() ? parsed.name : DEFAULT_PROFILE.name,
-        email: typeof parsed.email === "string" && parsed.email.trim() ? parsed.email.trim() : DEFAULT_PROFILE.email,
-        nextAncDate: typeof parsed.nextAncDate === "string" ? parsed.nextAncDate : DEFAULT_PROFILE.nextAncDate,
-        supplements: Array.isArray(parsed.supplements)
-          ? (parsed.supplements as Supplement[])
-          : DEFAULT_PROFILE.supplements,
-        hospital: typeof parsed.hospital === "string" ? parsed.hospital : (DEFAULT_PROFILE.hospital || ""),
-        stageSummary: typeof parsed.stageSummary === "string" ? parsed.stageSummary : (DEFAULT_PROFILE.stageSummary || ""),
-      };
-      return cachedProfile;
-    }
-  } catch {
-    // Storage may be unavailable; fall back to defaults.
   }
-  cachedProfile = DEFAULT_PROFILE;
+  const merged = { ...current, ...cleanPatch };
+  return {
+    ...merged,
+    name: sanitizeText(merged.name, "Amara Bennett"),
+    email: sanitizeText(merged.email, "amara.bennett@example.com"),
+  };
+}
+
+function getProfileSnapshot(): Profile {
   return cachedProfile;
 }
 
 function write(profile: Profile) {
-  const raw = JSON.stringify(profile);
-  try {
-    localStorage.setItem(KEY, raw);
-  } catch {
-    // Ignore write failures; in-memory state still updates.
+  const sanitized: Profile = {
+    ...profile,
+    name: sanitizeText(profile.name, "Amara Bennett"),
+    email: sanitizeText(profile.email, "amara.bennett@example.com"),
+  };
+  cachedProfile = sanitized;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: sanitized }));
   }
-  cachedRawProfile = raw;
-  cachedProfile = profile;
-  // Let every hook instance on the page know.
-  window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: profile }));
 }
 
 function subscribeProfile(callback: () => void) {
   if (typeof window === "undefined") return () => {};
   const handler = () => {
-    cachedRawProfile = null;
     callback();
   };
   window.addEventListener(CHANGE_EVENT, handler);
-  window.addEventListener("storage", handler);
   return () => {
     window.removeEventListener(CHANGE_EVENT, handler);
-    window.removeEventListener("storage", handler);
   };
 }
 
-/** Shared profile state. All components using this hook stay in sync. */
+/** Shared profile state. All components using this hook stay in sync in-memory. */
 export function useProfile() {
   const profile = useSyncExternalStore(
     subscribeProfile,
@@ -97,21 +100,22 @@ export function useProfile() {
   );
 
   const update = (patch: Partial<Profile>) => {
-    const next = { ...profile, ...patch };
+    const next = mergeProfiles(profile, patch);
     write(next);
   };
 
   const resetAll = () => {
-    try {
-      localStorage.removeItem(KEY);
-      localStorage.removeItem(LEGACY_KEY);
-    } catch {
-      // Ignore.
-    }
-    cachedRawProfile = null;
     cachedProfile = DEFAULT_PROFILE;
-    window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: DEFAULT_PROFILE }));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: DEFAULT_PROFILE }));
+    }
   };
 
   return { profile, update, resetAll };
+}
+
+export function updateProfile(patch: Partial<Profile>) {
+  const current = getProfileSnapshot();
+  const next = mergeProfiles(current, patch);
+  write(next);
 }

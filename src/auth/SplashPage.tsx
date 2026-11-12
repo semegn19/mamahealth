@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AppLogo } from "../components/AppLogo";
 import { useTranslation } from "../components/languageStore";
-
-const DURATION_MS = 3200;
+import { getAccessToken, clearTokens, usersApi, checkinApi, reportsApi } from "../api";
+import { updateProfile } from "../settings/profileStore";
+import { backendCheckinToFrontendLog } from "../logs/checkinLogsData";
+import { backendSummaryToArchiveItem } from "../report/reportCatalog";
 
 /**
  * Single-state loading screen shown right after sign-in.
  * Logo at the center, app name beneath it, and gentle motion
- * (breathing logo, progress bar, rotating messages) while the app opens.
+ * (breathing logo, progress bar, rotating messages) while the app
+ * authenticates and hydratess user data from the backend.
+ * Routes immediately once backend authentication is complete.
  */
 export function SplashPage() {
   const { t } = useTranslation();
@@ -23,13 +25,117 @@ export function SplashPage() {
 
   useEffect(() => {
     router.prefetch("/home");
-    // `replace` keeps the splash out of history so Back never loops through it.
-    const advance = window.setTimeout(() => router.replace("/home"), DURATION_MS);
+    router.prefetch("/onboarding");
+
+    let isMounted = true;
+    let routed = false;
+
+    const navigate = (dest: string) => {
+      if (routed || !isMounted) return;
+      routed = true;
+      router.replace(dest);
+    };
+
+    const token = getAccessToken();
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    // Hydrate all user data in parallel from backend while splash is displaying
+    const mePromise = usersApi
+      .getMe()
+      .then((me) => {
+        const live = me.current_pregnancy_status;
+        const weeks =
+          live?.gestational_age_weeks ??
+          (typeof me.gestational_age_weeks === "number"
+            ? me.gestational_age_weeks
+            : undefined);
+        const days =
+          live?.gestational_age_days ??
+          (typeof me.gestational_age_days === "number"
+            ? me.gestational_age_days
+            : 0);
+        const edd = me.estimated_due_date || live?.estimated_due_date || undefined;
+        const lnmp = me.effective_lnmp_date || me.lnmp_date || undefined;
+        const trimester =
+          live?.trimester ||
+          me.trimester ||
+          (weeks
+            ? weeks < 14
+              ? "first_trimester"
+              : weeks < 28
+                ? "second_trimester"
+                : "third_trimester"
+            : undefined);
+
+        const mappedSupplements =
+          Array.isArray(me.supplements) && me.supplements.length > 0
+            ? me.supplements.map((s) => ({
+                id: s.id,
+                name: s.name,
+                reminderTime: s.reminder_time ? s.reminder_time.slice(0, 5) : "08:00",
+              }))
+            : [];
+
+        const cleanName =
+          me.name && me.name.trim().toLowerCase() !== "amara bennett" ? me.name.trim() : undefined;
+        const cleanEmail =
+          me.email && me.email.trim().toLowerCase() !== "amara.bennett@example.com"
+            ? me.email.trim()
+            : undefined;
+
+        const profileUpdate: any = {
+          name: cleanName,
+          email: cleanEmail,
+          hospital: me.hospital || undefined,
+          gestationalAgeWeeks: weeks,
+          gestationalAgeDays: days,
+          edd,
+          lnmpDate: lnmp,
+          trimester,
+        };
+
+        if (mappedSupplements.length > 0) profileUpdate.supplements = mappedSupplements;
+        if (me.appointment?.appointment_date) {
+          profileUpdate.nextAncDate = me.appointment.appointment_date;
+          profileUpdate.appointment = {
+            appointment_date: me.appointment.appointment_date,
+            anc_contact_title: me.appointment.anc_contact_title,
+            anc_contact_title_am: me.appointment.anc_contact_title_am,
+            anc_contact_number: me.appointment.anc_contact_number,
+          };
+        }
+        updateProfile(profileUpdate);
+        return me;
+      });
+
+    // When backend finishes authentication & hydration, route immediately without simulated wait
+    mePromise.then((me) => {
+      if (me) {
+        navigate(me.onboarding_completed ? "/home" : "/onboarding");
+      } else {
+        navigate("/login");
+      }
+    }).catch((err) => {
+      console.error("Failed to authenticate session:", err);
+      clearTokens();
+      navigate("/login");
+    });
+
+    // Safety fallback timer: if network socket hangs indefinitely, don't leave user stranded
+    const fallbackTimer = window.setTimeout(() => {
+      navigate("/home");
+    }, 4500);
+
     const rotate = window.setInterval(() => {
       setMessageIndex((current) => (current + 1) % messages.length);
     }, 1100);
+
     return () => {
-      window.clearTimeout(advance);
+      isMounted = false;
+      window.clearTimeout(fallbackTimer);
       window.clearInterval(rotate);
     };
   }, [router, messages.length]);
@@ -83,21 +189,6 @@ export function SplashPage() {
           </span>
         </p>
         <p className="sr-only">{t("splash.loadingSr")}</p>
-
-        <Link
-          href="/home"
-          replace
-          prefetch={true}
-          className="group mt-6 inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-medium text-[#8d6a2a] underline decoration-[#c9a35d]/60 underline-offset-4 transition-colors hover:text-[#4a3f30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:text-[#e5be79] dark:hover:text-[#f5ede0] dark:focus-visible:outline-[#e5be79]"
-        >
-          {t("splash.continue")}
-          <ArrowRight
-            size={15}
-            strokeWidth={2}
-            className="transition-transform duration-300 group-hover:translate-x-1"
-            aria-hidden="true"
-          />
-        </Link>
       </div>
     </div>
   );

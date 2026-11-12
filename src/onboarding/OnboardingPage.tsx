@@ -10,17 +10,20 @@ import {
   ChevronDown,
   ChevronLeft,
   Heart,
+  HelpCircle,
   Info,
   MapPin,
   Mic,
   Minus,
   Pill,
   Plus,
+  Sparkles,
   X,
 } from "lucide-react";
 import { AppLogo } from "../components/AppLogo";
 import { ThemeSelect } from "../components/ThemeSelect";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { ModalDialog } from "../components/ModalDialog";
 import { useTranslation } from "../components/languageStore";
 import {
   COMPLICATION_OPTIONS,
@@ -45,8 +48,9 @@ import {
   type Residence,
 } from "./onboardingStore";
 import { useRouter } from "next/navigation";
-import { usersApi, type OnboardingSubmitPayload } from "../api";
+import { getAccessToken, usersApi, type CurrentPregnancyStatus, type OnboardingSubmitPayload } from "../api";
 import { useProfile } from "../settings/profileStore";
+import { showToast } from "../components/toastStore";
 
 type Stage = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type Screen = "welcome" | Stage | "complete";
@@ -260,10 +264,12 @@ function ChoiceRow({
   label,
   selected,
   onToggle,
+  icon,
 }: {
   label: string;
   selected: boolean;
   onToggle: () => void;
+  icon?: React.ReactNode;
 }) {
   return (
     <button
@@ -276,7 +282,10 @@ function ChoiceRow({
           : "border-[#d8c6a4] bg-white/70 hover:border-[#c9a35d]/70 hover:bg-white dark:border-[#3d3123] dark:bg-[#221c15]/80 dark:hover:border-[#e5be79]/45 dark:hover:bg-[#2a221a]"
       }`}
     >
-      <span className="text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">{label}</span>
+      <span className="flex min-w-0 items-center gap-2.5">
+        {icon}
+        <span className="truncate text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">{label}</span>
+      </span>
       <span
         aria-hidden="true"
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all duration-200 ${
@@ -288,6 +297,114 @@ function ChoiceRow({
         {selected && <Check size={13} strokeWidth={3} />}
       </span>
     </button>
+  );
+}
+
+function StageHeader({
+  stage,
+  title,
+  subtitle,
+}: {
+  stage: number;
+  title: string;
+  subtitle: string;
+}) {
+  const [helpOpen, setHelpOpen] = useState(false);
+  const { t } = useTranslation();
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
+          {title}
+        </h2>
+        <button
+          type="button"
+          onClick={() => setHelpOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={helpOpen}
+          aria-label={t("onboarding.stageHelp.buttonLabel")}
+          title={t("onboarding.stageHelp.buttonLabel")}
+          className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#c9a35d]/70 bg-white/90 text-[#8d6a2a] shadow-sm transition hover:scale-105 hover:border-[#8d6a2a] hover:bg-[#fbe7b8]/60 active:scale-95 dark:border-[#e5be79]/40 dark:bg-[#2b2217] dark:text-[#e5be79] dark:hover:bg-[#e5be79]/20"
+        >
+          <span className="text-[14px] font-semibold">?</span>
+        </button>
+      </div>
+      <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
+        {subtitle}
+      </p>
+
+      {/* Help Pop-up Modal (Standardized popup style, appears on top of questions without displacing them) */}
+      <ModalDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        ariaLabelledBy={`stage-help-title-${stage}`}
+      >
+        <div className="report-sheet home-glass-warm max-h-[90dvh] w-full max-w-[440px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fbe7b8] text-[15px] font-bold text-[#8d6a2a] shadow-sm dark:bg-[#e5be79]/20 dark:text-[#e5be79]">
+                ?
+              </span>
+              <div>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#8d6a2a] dark:text-[#dfb870]">
+                  {t("onboarding.stageHelp.buttonLabel")}
+                </p>
+                <h2
+                  id={`stage-help-title-${stage}`}
+                  className="mt-0.5 text-[22px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
+                >
+                  {t(`onboarding.stageHelp.${stage}.title`)}
+                </h2>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHelpOpen(false)}
+              aria-label={t("common.close")}
+              className="home-icon-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce]"
+            >
+              <X size={19} strokeWidth={1.8} />
+            </button>
+          </div>
+
+          {/* Body Cards */}
+          <div className="mt-5 space-y-3.5 text-[13.5px] leading-relaxed text-[#5c4f3d] dark:text-[#d8c7ab]">
+            <div className="rounded-[20px] border border-[#ede3cf]/80 bg-[#fbf7ee]/90 p-4 shadow-sm dark:border-[#3a2f22] dark:bg-[#1a1510]/80">
+              <p className="flex items-center gap-2 text-[14px] font-semibold text-[#8d6a2a] dark:text-[#e5be79]">
+                <HelpCircle size={16} strokeWidth={2} aria-hidden="true" />
+                {t("onboarding.stageHelp.whatItMeans")}
+              </p>
+              <p className="mt-1.5 leading-relaxed text-[#4a3f30] dark:text-[#e0d2bd]">
+                {t(`onboarding.stageHelp.${stage}.meaning`)}
+              </p>
+            </div>
+
+            <div className="rounded-[20px] border border-[#ede3cf]/80 bg-[#fbf7ee]/90 p-4 shadow-sm dark:border-[#3a2f22] dark:bg-[#1a1510]/80">
+              <p className="flex items-center gap-2 text-[14px] font-semibold text-[#8d6a2a] dark:text-[#e5be79]">
+                <Sparkles size={16} strokeWidth={2} aria-hidden="true" />
+                {t("onboarding.stageHelp.howToAnswer")}
+              </p>
+              <p className="mt-1.5 leading-relaxed text-[#4a3f30] dark:text-[#e0d2bd]">
+                {t(`onboarding.stageHelp.${stage}.guide`)}
+              </p>
+            </div>
+          </div>
+
+          {/* Action button */}
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setHelpOpen(false)}
+              className="w-full rounded-full bg-[#4a3f30] py-3.5 text-[15px] font-medium text-[#fffaf0] transition hover:bg-[#655039] active:scale-[0.99] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
+            >
+              {t("onboarding.stageHelp.close")}
+            </button>
+          </div>
+        </div>
+      </ModalDialog>
+    </div>
   );
 }
 
@@ -449,20 +566,40 @@ function MicWaveform() {
 function OnboardingComplete({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
   useEffect(() => {
-    const timer = window.setTimeout(onDone, 2600);
+    const timer = window.setTimeout(onDone, 2800);
     return () => window.clearTimeout(timer);
   }, [onDone]);
 
   return (
-    <div className="rise flex flex-col items-center justify-center text-center" role="status">
-      <span className="relative flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-[#3b3226] to-[#4a3f30] text-[#fbe7b8] shadow-[0_24px_55px_-18px_rgba(60,45,25,0.75)] dark:from-[#efd093] dark:to-[#c99642] dark:text-[#231b12]">
-        <Check size={46} strokeWidth={2.2} aria-hidden="true" />
+    <div className="rise flex flex-col items-center justify-center text-center px-4" role="status">
+      <div className="relative flex items-center justify-center">
+        {/* Soft breathing golden aura */}
         <span
           aria-hidden="true"
-          className="absolute inset-0 animate-ping rounded-full bg-[#d9ab5e]/30"
+          className="absolute -inset-4 rounded-full bg-[#f3d9a4] opacity-55 blur-2xl dark:bg-[#c99642]/25 animate-pulse"
         />
-      </span>
-      <h2 className="mt-7 text-[28px] font-light leading-[1.2] tracking-[-0.03em] text-[#3b3226] dark:text-[#f5ede0]">
+
+        {/* Ambient subtle ping ring */}
+        <span
+          aria-hidden="true"
+          className="absolute -inset-2 rounded-full border border-[#e5be79]/40 opacity-70 animate-[ping_3.5s_cubic-bezier(0,0,0.2,1)_infinite]"
+        />
+
+        {/* Main radiant gold medallion */}
+        <span className="relative flex h-28 w-28 items-center justify-center rounded-full border-2 border-[#e8cb8d] bg-gradient-to-br from-[#fffaf0] via-[#f7e4be] to-[#ebd097] p-4 shadow-[0_22px_55px_-14px_rgba(180,135,50,0.45)] dark:border-[#e5be79]/45 dark:bg-gradient-to-br dark:from-[#3a2c1b] dark:via-[#2b2014] dark:to-[#1e160e] dark:shadow-[0_24px_60px_-16px_rgba(0,0,0,0.85)]">
+          <AppLogo size={64} className="h-16 w-16 drop-shadow-[0_4px_12px_rgba(141,106,42,0.3)]" priority />
+
+          {/* Floating celebratory golden heart badge */}
+          <span
+            aria-hidden="true"
+            className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#fffaf2] bg-[#3b3226] text-[#fbe7b8] shadow-md dark:border-[#2b2014] dark:bg-[#e5be79] dark:text-[#231b12]"
+          >
+            <Heart size={16} fill="currentColor" strokeWidth={0} />
+          </span>
+        </span>
+      </div>
+
+      <h2 className="mt-8 text-[28px] font-light leading-[1.2] tracking-[-0.03em] text-[#3b3226] dark:text-[#f5ede0]">
         {t("onboarding.careSetUp")}
       </h2>
       <p className="mt-3 max-w-[30ch] text-[14.5px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
@@ -493,6 +630,7 @@ export function OnboardingPage() {
   const [otherConditionDraft, setOtherConditionDraft] = useState("");
   const [showOtherField, setShowOtherField] = useState(false);
   const [medDraft, setMedDraft] = useState("");
+  const [allMedications, setAllMedications] = useState<string[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -500,8 +638,15 @@ export function OnboardingPage() {
   }, [router]);
 
   useEffect(() => {
+    if (!getAccessToken()) {
+      router.replace("/login");
+      return;
+    }
     const stored = loadOnboarding();
     setData(stored);
+    if (stored.medications && stored.medications.length > 0) {
+      setAllMedications(stored.medications);
+    }
     setScreen(stored.completed ? 1 : "welcome");
     setHydrated(true);
   }, []);
@@ -571,11 +716,58 @@ export function OnboardingPage() {
   const knownWeeks = Number(data.knownWeeks || 0);
   const knownDays = Number(data.knownDays || 0);
 
+  const [backendDating, setBackendDating] = useState<CurrentPregnancyStatus | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchBackendGestation = async () => {
+      try {
+        if (data.dating === "known" && data.knownWeeks !== "") {
+          const res = await usersApi.calculateGestationalAge({
+            pregnancy_counting_method: "manual",
+            manual_gestational_weeks: knownWeeks,
+            manual_gestational_days: knownDays,
+          });
+          if (!cancelled) setBackendDating(res);
+        } else if (data.dating === "lmp" && lmpDate) {
+          const y = lmpDate.getFullYear();
+          const m = String(lmpDate.getMonth() + 1).padStart(2, "0");
+          const d = String(lmpDate.getDate()).padStart(2, "0");
+          const res = await usersApi.calculateGestationalAge({
+            pregnancy_counting_method: "lnmp",
+            lnmp_date: `${y}-${m}-${d}`,
+          });
+          if (!cancelled) setBackendDating(res);
+        } else {
+          if (!cancelled) setBackendDating(null);
+        }
+      } catch {
+        // Fall back gracefully to local math if network drops during onboarding
+      }
+    };
+    fetchBackendGestation();
+    return () => {
+      cancelled = true;
+    };
+  }, [data.dating, lmpDate, knownWeeks, knownDays, data.knownWeeks]);
+
   const dating = useMemo(() => {
+    if (backendDating && backendDating.gestational_age_weeks != null) {
+      const weeks = backendDating.gestational_age_weeks;
+      const remainingDays = backendDating.gestational_age_days ?? 0;
+      const days = backendDating.gestational_age_total_days ?? (weeks * 7 + remainingDays);
+      const dueDate = backendDating.estimated_due_date
+        ? new Date(`${backendDating.estimated_due_date}T00:00:00`)
+        : (data.dating === "known"
+            ? gestationFromKnown(knownWeeks, knownDays).dueDate
+            : (lmpDate ? gestationFromLmp(lmpDate).dueDate : new Date()));
+      const trimester = backendDating.trimester_info?.number ?? (days <= 97 ? 1 : days <= 195 ? 2 : 3);
+      return { days, weeks, remainingDays, dueDate, trimester };
+    }
     if (data.dating === "known") return gestationFromKnown(knownWeeks, knownDays);
     if (!lmpDate) return null;
     return gestationFromLmp(lmpDate);
-  }, [data.dating, lmpDate, knownWeeks, knownDays]);
+  }, [backendDating, data.dating, lmpDate, knownWeeks, knownDays]);
 
   const getOptionLabel = (option: string) => {
     const key = `onboarding.options.${option}`;
@@ -696,8 +888,11 @@ export function OnboardingPage() {
     const allConditions = Array.from(new Set([...data.conditions, ...data.customConditions]));
     const primaryCustom = data.customConditions[0] || null;
 
+    const safeProfileName =
+      profile.name && profile.name.trim().toLowerCase() !== "amara bennett" ? profile.name.trim() : null;
+
     const payload: OnboardingSubmitPayload = {
-      name: profile.name || null,
+      name: safeProfileName,
       age: data.age ? parseInt(data.age, 10) : null,
       area: data.residence ? (data.residence.toLowerCase() as "urban" | "rural") : null,
       hospital: hospitalChoice,
@@ -719,29 +914,69 @@ export function OnboardingPage() {
 
     try {
       const result = await usersApi.submitOnboarding(payload);
+      let gestWeeks: number | undefined = undefined;
+      let gestDays: number | undefined = undefined;
+      let trimester: string | undefined = undefined;
+      let edd: string | undefined = undefined;
+
       if (result) {
-        updateProfile({
-          name: result.name || profile.name,
-          nextAncDate: result.appointment?.appointment_date || profile.nextAncDate,
-          supplements: result.supplements?.length
-            ? result.supplements.map((s) => ({
-                id: s.id,
-                name: s.name,
-                reminderTime: s.reminder_time ? s.reminder_time.slice(0, 5) : "09:00",
-              }))
-            : profile.supplements,
-        });
+        const live = result.current_pregnancy_status;
+        gestWeeks = live?.gestational_age_weeks ?? (typeof result.gestational_age_weeks === "number" ? result.gestational_age_weeks : undefined);
+        gestDays = live?.gestational_age_days ?? (typeof result.gestational_age_days === "number" ? result.gestational_age_days : undefined);
+        trimester = live?.trimester || result.trimester || undefined;
+        edd = result.estimated_due_date || live?.estimated_due_date || undefined;
       }
-    } catch {
-      // Local progress is always preserved safely even if offline
+
+      if (gestWeeks === undefined) {
+        if (backendDating?.gestational_age_weeks != null) {
+          gestWeeks = backendDating.gestational_age_weeks;
+          gestDays = backendDating.gestational_age_days ?? 0;
+          trimester = backendDating.trimester || undefined;
+          edd = backendDating.estimated_due_date || undefined;
+        } else if (data.dating === "known" && data.knownWeeks) {
+          gestWeeks = parseInt(data.knownWeeks, 10);
+          gestDays = data.knownDays ? parseInt(data.knownDays, 10) : 0;
+        } else if (lnmpIso) {
+          const lmpDate = new Date(lnmpIso);
+          const diffDays = Math.max(0, Math.floor((Date.now() - lmpDate.getTime()) / (1000 * 60 * 60 * 24)));
+          gestWeeks = Math.floor(diffDays / 7);
+          gestDays = diffDays % 7;
+        }
+        if (gestWeeks !== undefined && !trimester) {
+          trimester = gestWeeks < 14 ? "first_trimester" : gestWeeks < 28 ? "second_trimester" : "third_trimester";
+        }
+      }
+
+      const safeResultName =
+        result?.name && result.name.trim().toLowerCase() !== "amara bennett"
+          ? result.name.trim()
+          : safeProfileName || undefined;
+
+      updateProfile({
+        name: safeResultName,
+        nextAncDate: result?.appointment?.appointment_date || profile.nextAncDate,
+        gestationalAgeWeeks: gestWeeks,
+        gestationalAgeDays: gestDays,
+        trimester,
+        edd: edd || undefined,
+        lnmpDate: lnmpIso || undefined,
+        supplements: result?.supplements?.length
+          ? result.supplements.map((s) => ({
+              id: s.id,
+              name: s.name,
+              reminderTime: s.reminder_time ? s.reminder_time.slice(0, 5) : "09:00",
+            }))
+          : profile.supplements,
+      });
+      const finished = { ...data, completed: true };
+      setData(finished);
+      saveOnboarding(finished);
+      setScreen("complete");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t("common.networkError"), "error");
     } finally {
       setSubmitting(false);
     }
-
-    const finished = { ...data, completed: true };
-    setData(finished);
-    saveOnboarding(finished);
-    setScreen("complete");
   };
 
   const handleContinue = () => {
@@ -877,14 +1112,18 @@ export function OnboardingPage() {
           {/* ------------------------------ Welcome ------------------------------ */}
           {screen === "welcome" && (
             <div
-              className={`transition-all duration-300 ${leaving ? "-translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}
+              className={`transition-all duration-400 motion-safe:animate-[rise_0.6s_cubic-bezier(0.16,1,0.3,1)_both] ${
+                leaving ? "-translate-y-2 opacity-0" : "translate-y-0 opacity-100"
+              }`}
             >
-              <h1 className="whitespace-nowrap text-[clamp(26px,7.5vw,34px)] font-light leading-[1.12] tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
-                {t("onboarding.letsSetUpCare")}
-              </h1>
-              <p className="mt-3 text-[15px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                {t("onboarding.welcomeSubtitle")}
-              </p>
+              <div className="motion-safe:animate-[rise_0.5s_cubic-bezier(0.16,1,0.3,1)_both]">
+                <h1 className="whitespace-nowrap text-[clamp(26px,7.5vw,34px)] font-light leading-[1.12] tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
+                  {t("onboarding.letsSetUpCare")}
+                </h1>
+                <p className="mt-3 text-[15px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
+                  {t("onboarding.welcomeSubtitle")}
+                </p>
+              </div>
 
               <ol className="mt-8 space-y-5">
                 {[
@@ -904,7 +1143,11 @@ export function OnboardingPage() {
                     body: t("onboarding.carePlanDesc"),
                   },
                 ].map((item, index) => (
-                  <li key={index} className="flex items-start gap-3.5">
+                  <li
+                    key={index}
+                    className="flex items-start gap-3.5 motion-safe:animate-[rise_0.55s_cubic-bezier(0.16,1,0.3,1)_both]"
+                    style={{ animationDelay: `${(index + 1) * 110}ms` }}
+                  >
                     <span className="mt-0.5 text-[#8d6a2a] dark:text-[#e5be79]" aria-hidden="true">
                       {item.icon}
                     </span>
@@ -920,7 +1163,10 @@ export function OnboardingPage() {
                 ))}
               </ol>
 
-              <p className="mt-7 flex items-start gap-2 text-[12.5px] leading-relaxed text-[#7b6642] dark:text-[#a8967b]">
+              <p
+                className="mt-7 flex items-start gap-2 text-[12.5px] leading-relaxed text-[#7b6642] dark:text-[#a8967b] motion-safe:animate-[rise_0.55s_cubic-bezier(0.16,1,0.3,1)_both]"
+                style={{ animationDelay: "360ms" }}
+              >
                 <Info
                   size={15}
                   strokeWidth={2}
@@ -939,12 +1185,7 @@ export function OnboardingPage() {
             >
               {stage === 1 && (
                 <>
-                  <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {t("onboarding.stage1Title")}
-                  </h2>
-                  <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    {t("onboarding.stage1Sub")}
-                  </p>
+                  <StageHeader stage={1} title={t("onboarding.stage1Title")} subtitle={t("onboarding.stage1Sub")} />
 
                   <div className="mt-7 space-y-5">
                     {/* Age */}
@@ -1098,12 +1339,7 @@ export function OnboardingPage() {
               {/* ------------------------------ Stage 2 ------------------------------ */}
               {stage === 2 && (
                 <>
-                  <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {t("onboarding.stage2Title")}
-                  </h2>
-                  <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    {t("onboarding.stage2Sub")}
-                  </p>
+                  <StageHeader stage={2} title={t("onboarding.stage2Title")} subtitle={t("onboarding.stage2Sub")} />
 
                   <div className="mt-6">
                     <SegmentedSwitch<DatingMode>
@@ -1180,14 +1416,18 @@ export function OnboardingPage() {
                             {t("onboarding.basedOnDates")}
                           </p>
                           <p className="mt-1.5 text-[21px] font-medium leading-snug text-[#3b3226] dark:text-[#f5ede0]">
-                            {dating.weeks} {t("onboarding.weeks")}, {dating.remainingDays}{" "}
-                            {dating.remainingDays === 1 ? (isAmharic ? "ቀን" : "day") : (isAmharic ? "ቀናት" : "days")}{" "}
-                            {t("onboarding.weeksAlong")}
+                            {t("onboarding.weeksAlong", {
+                              weeks: dating.weeks,
+                              days: dating.remainingDays,
+                              dayLabel: dating.remainingDays === 1 ? (isAmharic ? "ቀን" : "day") : (isAmharic ? "ቀናት" : "days"),
+                            })}
                           </p>
                           <p className="mt-1 text-[13px] text-[#6f5a35] dark:text-[#d8c7ab]">
-                            {dating.trimester === 0 ? t("onboarding.dueToday") : `${t("onboarding.trimester")} ${dating.trimester}`}
-                            {dating.trimester > 0 ? " · " : ""}
-                            {Math.max(0, 280 - dating.days)} {t("onboarding.daysToGo")}
+                            {dating.trimester === 0
+                              ? t("onboarding.dueToday")
+                              : t("onboarding.trimester", { trimester: dating.trimester })}
+                            {" · "}
+                            {t("onboarding.daysToGo", { days: Math.max(0, 280 - dating.days) })}
                           </p>
                           <div className="mt-3 border-t border-[#b98a3e]/25 pt-2.5 dark:border-[#e5be79]/22">
                             <p className="text-[12px] text-[#7b6642] dark:text-[#b9a88e]">
@@ -1271,13 +1511,15 @@ export function OnboardingPage() {
                               {t("onboarding.basedOnKnown")}
                             </p>
                             <p className="mt-1.5 text-[21px] font-medium leading-snug text-[#3b3226] dark:text-[#f5ede0]">
-                              {knownWeeks} {t("onboarding.weeks")}, {knownDays}{" "}
-                              {knownDays === 1 ? (isAmharic ? "ቀን" : "day") : (isAmharic ? "ቀናት" : "days")}{" "}
-                              {t("onboarding.weeksAlong")}
+                              {t("onboarding.weeksAlong", {
+                                weeks: knownWeeks,
+                                days: knownDays,
+                                dayLabel: knownDays === 1 ? (isAmharic ? "ቀን" : "day") : (isAmharic ? "ቀናት" : "days"),
+                              })}
                             </p>
                             <p className="mt-1 text-[13px] text-[#6f5a35] dark:text-[#d8c7ab]">
-                              {t("onboarding.trimester")} {dating?.trimester} ·{" "}
-                              {Math.max(0, 280 - (knownWeeks * 7 + knownDays))} {t("onboarding.daysToGo")}
+                              {dating?.trimester ? t("onboarding.trimester", { trimester: dating.trimester }) + " · " : ""}
+                              {t("onboarding.daysToGo", { days: Math.max(0, 280 - (knownWeeks * 7 + knownDays)) })}
                             </p>
                             <div className="mt-3 border-t border-[#b98a3e]/25 pt-2.5 dark:border-[#e5be79]/22">
                               <p className="text-[12px] text-[#7b6642] dark:text-[#b9a88e]">
@@ -1312,12 +1554,7 @@ export function OnboardingPage() {
               {/* ------------------------------ Stage 3 ------------------------------ */}
               {stage === 3 && (
                 <>
-                  <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {t("onboarding.stage3Title")}
-                  </h2>
-                  <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    {t("onboarding.stage3Sub")}
-                  </p>
+                  <StageHeader stage={3} title={t("onboarding.stage3Title")} subtitle={t("onboarding.stage3Sub")} />
 
                   <div className="mt-7 space-y-6">
                     <YesNoQuestion
@@ -1362,39 +1599,16 @@ export function OnboardingPage() {
                         ))}
 
                         {data.customComplications.map((complication) => (
-                          <div
+                          <ChoiceRow
                             key={complication}
-                            className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-[#c9a35d] bg-[#fbe7b8]/70 px-4 py-3 dark:border-[#e5be79] dark:bg-[#e5be79]/18"
-                          >
-                            <span className="flex min-w-0 items-center gap-2.5">
-                              <span
-                                aria-hidden="true"
-                                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#4a3f30] bg-[#4a3f30] text-[#fbe7b8] dark:border-[#e5be79] dark:bg-[#e5be79] dark:text-[#231b12]"
-                              >
-                                <Check size={13} strokeWidth={3} />
-                              </span>
-                              <span className="truncate text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                                {complication}
-                              </span>
-                            </span>
-                            <button
-                              type="button"
-                              aria-label={`Remove ${complication}`}
-                              onClick={() => {
-                                update({
-                                  customComplications: data.customComplications.filter(
-                                    (entry) => entry !== complication,
-                                  ),
-                                  complications: data.complications.filter(
-                                    (entry) => entry !== complication,
-                                  ),
-                                });
-                              }}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#85735a] transition-colors hover:bg-white/70 hover:text-[#9c3a29] dark:text-[#b9a88e] dark:hover:bg-white/10 dark:hover:text-[#f08b75]"
-                            >
-                              <X size={15} strokeWidth={2.2} />
-                            </button>
-                          </div>
+                            label={complication}
+                            selected={data.complications.includes(complication)}
+                            onToggle={() =>
+                              update({
+                                complications: toggleListItem(data.complications, complication),
+                              })
+                            }
+                          />
                         ))}
 
                         <ChoiceRow
@@ -1428,6 +1642,10 @@ export function OnboardingPage() {
                                     ? data.complications
                                     : [...data.complications, name],
                                 });
+                              } else if (!data.complications.includes(name)) {
+                                update({
+                                  complications: [...data.complications, name],
+                                });
                               }
                               setOtherComplicationDraft("");
                             }}
@@ -1443,12 +1661,7 @@ export function OnboardingPage() {
               {/* ------------------------------ Stage 4 ------------------------------ */}
               {stage === 4 && (
                 <>
-                  <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {t("onboarding.stage4Title")}
-                  </h2>
-                  <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    {t("onboarding.stage4Sub")}
-                  </p>
+                  <StageHeader stage={4} title={t("onboarding.stage4Title")} subtitle={t("onboarding.stage4Sub")} />
 
                   <div className="mt-6 space-y-2">
                     {CONDITION_OPTIONS.map((option) => (
@@ -1463,37 +1676,14 @@ export function OnboardingPage() {
                     ))}
 
                     {data.customConditions.map((condition) => (
-                      <div
+                      <ChoiceRow
                         key={condition}
-                        className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-[#c9a35d] bg-[#fbe7b8]/70 px-4 py-3 dark:border-[#e5be79] dark:bg-[#e5be79]/18"
-                      >
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <span
-                            aria-hidden="true"
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#4a3f30] bg-[#4a3f30] text-[#fbe7b8] dark:border-[#e5be79] dark:bg-[#e5be79] dark:text-[#231b12]"
-                          >
-                            <Check size={13} strokeWidth={3} />
-                          </span>
-                          <span className="truncate text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                            {condition}
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          aria-label={`Remove ${condition}`}
-                          onClick={() => {
-                            update({
-                              customConditions: data.customConditions.filter(
-                                (entry) => entry !== condition,
-                              ),
-                              conditions: data.conditions.filter((entry) => entry !== condition),
-                            });
-                          }}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#85735a] transition-colors hover:bg-white/70 hover:text-[#9c3a29] dark:text-[#b9a88e] dark:hover:bg-white/10 dark:hover:text-[#f08b75]"
-                        >
-                          <X size={15} strokeWidth={2.2} />
-                        </button>
-                      </div>
+                        label={condition}
+                        selected={data.conditions.includes(condition)}
+                        onToggle={() =>
+                          update({ conditions: toggleListItem(data.conditions, condition) })
+                        }
+                      />
                     ))}
 
                     <ChoiceRow
@@ -1538,12 +1728,7 @@ export function OnboardingPage() {
               {/* ------------------------------ Stage 5 ------------------------------ */}
               {stage === 5 && (
                 <>
-                  <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {t("onboarding.stage5Title")}
-                  </h2>
-                  <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    {t("onboarding.stage5Sub")}
-                  </p>
+                  <StageHeader stage={5} title={t("onboarding.stage5Title")} subtitle={t("onboarding.stage5Sub")} />
 
                   <div className="mt-6 space-y-5">
                     <YesNoQuestion
@@ -1566,6 +1751,13 @@ export function OnboardingPage() {
                             const name = medDraft.trim();
                             if (!name) return;
                             if (
+                              !allMedications.some(
+                                (entry) => entry.toLowerCase() === name.toLowerCase(),
+                              )
+                            ) {
+                              setAllMedications((curr) => [...curr, name]);
+                            }
+                            if (
                               !data.medications.some(
                                 (entry) => entry.toLowerCase() === name.toLowerCase(),
                               )
@@ -1577,48 +1769,36 @@ export function OnboardingPage() {
                           addLabel={t("common.save")}
                         />
 
-                        {data.medications.length > 0 && (
+                        {allMedications.length > 0 && (
                           <div className="mt-5">
                             <p className="text-[13.5px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]">
                               {t("onboarding.currentMedications")}
                             </p>
-                            <ul
+                            <div
                               aria-label={t("onboarding.currentMedications")}
                               className="mt-2.5 space-y-2"
                             >
-                              {data.medications.map((medication) => (
-                                <li
+                              {allMedications.map((medication) => (
+                                <ChoiceRow
                                   key={medication}
-                                  className="flex min-h-12 w-full items-center justify-between gap-3 rounded-full border border-[#c9a35d] bg-[#fbe7b8]/70 py-2 pl-4 pr-2.5 shadow-[0_6px_16px_-10px_rgba(160,120,50,0.45)] dark:border-[#e5be79] dark:bg-[#e5be79]/18"
-                                >
-                                  <span className="flex min-w-0 items-center gap-2.5">
+                                  label={medication}
+                                  icon={
                                     <Pill
                                       size={16}
                                       strokeWidth={1.85}
                                       aria-hidden="true"
                                       className="shrink-0 text-[#6f5a35] dark:text-[#e5be79]"
                                     />
-                                    <span className="truncate text-[14px] font-medium text-[#3b3226] dark:text-[#f5ede0]">
-                                      {medication}
-                                    </span>
-                                  </span>
-                                  <button
-                                    type="button"
-                                    aria-label={`Remove ${medication}`}
-                                    onClick={() =>
-                                      update({
-                                        medications: data.medications.filter(
-                                          (entry) => entry !== medication,
-                                        ),
-                                      })
-                                    }
-                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#85735a] transition-colors hover:bg-white/70 hover:text-[#9c3a29] dark:text-[#b9a88e] dark:hover:bg-white/10 dark:hover:text-[#f08b75]"
-                                  >
-                                    <X size={15} strokeWidth={2.2} />
-                                  </button>
-                                </li>
+                                  }
+                                  selected={data.medications.includes(medication)}
+                                  onToggle={() =>
+                                    update({
+                                      medications: toggleListItem(data.medications, medication),
+                                    })
+                                  }
+                                />
                               ))}
-                            </ul>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1630,12 +1810,7 @@ export function OnboardingPage() {
               {/* ------------------------------ Stage 6 ------------------------------ */}
               {stage === 6 && (
                 <>
-                  <h2 className="text-[28px] font-light leading-[1.15] tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {t("onboarding.stage6Title")}
-                  </h2>
-                  <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    {t("onboarding.stage6Sub")}
-                  </p>
+                  <StageHeader stage={6} title={t("onboarding.stage6Title")} subtitle={t("onboarding.stage6Sub")} />
 
                   <div className="mt-6 space-y-5">
                     <YesNoQuestion
@@ -1675,15 +1850,13 @@ export function OnboardingPage() {
               {/* ------------------------------ Stage 7 ------------------------------ */}
               {stage === 7 && screen !== "complete" && (
                 <div className="flex flex-col items-center text-center">
-                  <MicRings />
+                  <div className="w-full text-left">
+                    <StageHeader stage={7} title={t("onboarding.stage7Title")} subtitle={t("onboarding.stage7Sub")} />
+                  </div>
 
-                  <h2 className="mt-8 text-[30px] font-light leading-[1.12] tracking-[-0.03em] text-[#3b3226] dark:text-[#f5ede0]">
-                    {t("onboarding.stage7Title")}
-                  </h2>
-
-                  <p className="mx-auto mt-4 max-w-[34ch] text-[15px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-                    {t("onboarding.stage7Sub")}
-                  </p>
+                  <div className="mt-6">
+                    <MicRings />
+                  </div>
 
                   <div className="mt-8 w-full">
                     <MicWaveform />
@@ -1711,7 +1884,8 @@ export function OnboardingPage() {
             <button
               type="button"
               onClick={startOnboarding}
-              className="group flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#3b3226] px-6 py-3.5 text-[15px] font-medium text-[#fbe7b8] shadow-[0_14px_30px_-16px_rgba(60,45,25,0.7)] transition-colors hover:bg-[#4a3f30] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:shadow-[0_16px_34px_-14px_rgba(229,190,121,0.45)] dark:hover:bg-[#f0cf92] dark:focus-visible:outline-[#e5be79]"
+              style={{ animationDelay: "420ms" }}
+              className="group flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#3b3226] px-6 py-3.5 text-[15px] font-medium text-[#fbe7b8] shadow-[0_14px_30px_-16px_rgba(60,45,25,0.7)] transition-colors hover:bg-[#4a3f30] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8d6a2a] dark:bg-[#e5be79] dark:text-[#231b12] dark:shadow-[0_16px_34px_-14px_rgba(229,190,121,0.45)] dark:hover:bg-[#f0cf92] dark:focus-visible:outline-[#e5be79] motion-safe:animate-[rise_0.6s_cubic-bezier(0.16,1,0.3,1)_both]"
             >
               {t("onboarding.start")}
               <ArrowRight

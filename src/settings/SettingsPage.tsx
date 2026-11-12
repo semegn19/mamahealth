@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Bell,
   Building2,
+  CalendarDays,
   Check,
   ChevronLeft,
   LogOut,
@@ -21,12 +21,23 @@ import {
 } from "lucide-react";
 import { BottomNav } from "../components/BottomNav";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { UserAvatar, AVATAR_OPTIONS, resolveAvatarIndex } from "../components/UserAvatar";
 import { ModalDialog } from "../components/ModalDialog";
-import { useProfile, type Supplement } from "./profileStore";
+import { showToast } from "../components/toastStore";
+import { useProfile, type CalendarSystem, type Supplement } from "./profileStore";
 import { useTranslation } from "../components/languageStore";
 import { useTheme, type Theme } from "../theme/themeStore";
 import { useRouter } from "next/navigation";
-import { usersApi, ancApi, authApi, getAccessToken, clearTokens } from "../api";
+import {
+  usersApi,
+  ancApi,
+  authApi,
+  getAccessToken,
+  clearTokens,
+  clearUserSessionData,
+  useInvalidateQueries,
+} from "../api";
+import { clearNotifications } from "../notifications/notificationsData";
 
 function formatDate(value: string, isAmharic: boolean, notSetLabel: string) {
   if (!value) return notSetLabel;
@@ -206,6 +217,85 @@ function AppearanceSelector({
 }
 
 /* ------------------------------------------------------------------ */
+/* Calendar System switcher                                           */
+/* ------------------------------------------------------------------ */
+
+function CalendarSystemSelector({
+  value,
+  onSelect,
+}: {
+  value: CalendarSystem;
+  onSelect: (next: CalendarSystem) => void;
+}) {
+  const { t } = useTranslation();
+  const options: {
+    value: CalendarSystem;
+    label: string;
+    subtitle: string;
+    badge: string;
+  }[] = [
+    {
+      value: "ethiopian",
+      label: t("settings.ethiopianCalendar"),
+      subtitle: t("settings.ethiopianCalendarSub"),
+      badge: "ዓ.ም.",
+    },
+    {
+      value: "gregorian",
+      label: t("settings.gregorianCalendar"),
+      subtitle: t("settings.gregorianCalendarSub"),
+      badge: "G.C.",
+    },
+  ];
+
+  return (
+    <div role="radiogroup" aria-label={t("settings.calendarSystem")} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {options.map((opt) => {
+        const active = value === opt.value;
+
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onSelect(opt.value)}
+            className={`group relative flex flex-col justify-between overflow-hidden rounded-[22px] border p-4 text-left transition-all duration-300 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79] ${
+              active
+                ? "border-[#b98a3e] bg-white/90 shadow-[0_14px_30px_-18px_rgba(120,85,30,0.55)] ring-1 ring-[#c9a35d]/55 dark:border-[#e5be79]/75 dark:bg-[#2a2219]/95 dark:shadow-[0_14px_32px_-16px_rgba(0,0,0,0.8)] dark:ring-[#e5be79]/40"
+                : "border-[#d8c6a4]/80 bg-white/45 hover:border-[#c9a35d]/70 hover:bg-white/70 dark:border-[#46392a] dark:bg-[#1d1711]/70 dark:hover:border-[#e5be79]/40 dark:hover:bg-[#251e16]/85"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-[15px] font-medium leading-tight text-[#3b3226] dark:text-[#f5ede0]">
+                {opt.label}{" "}
+                <span className="font-normal text-[13px] text-[#85735a] dark:text-[#9c8b72]">
+                  ({opt.badge})
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
+                  active
+                    ? "border-[#3b3226] bg-[#3b3226] text-[#fbe7b8] dark:border-[#e5be79] dark:bg-[#e5be79] dark:text-[#231b12]"
+                    : "border-[#c9b489] bg-transparent dark:border-[#574734]"
+                }`}
+              >
+                {active && <Check size={13} strokeWidth={2.8} />}
+              </span>
+            </div>
+
+            <p className="mt-2 text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
+              {opt.subtitle}
+            </p>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Name editor dialog                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -246,7 +336,7 @@ function NameEditor({
   return (
     <ModalDialog open={true} onClose={onClose} ariaLabelledBy="name-editor-title">
       <div
-        className="report-sheet w-full max-w-[440px] overflow-y-auto rounded-t-[30px] border border-white/80 bg-[#fbf6ec]/95 p-6 pb-[max(28px,env(safe-area-inset-bottom))] shadow-[0_-18px_50px_-25px_rgba(85,55,18,0.5)] backdrop-blur-xl sm:rounded-[30px] dark:border-[#e5be79]/22 dark:bg-[#221c15]/97 dark:shadow-[0_-18px_50px_-20px_rgba(0,0,0,0.85)]"
+        className="report-sheet home-glass-warm max-h-[90dvh] w-full max-w-[440px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]"
       >
         <div className="flex items-center justify-between">
           <div>
@@ -291,7 +381,7 @@ function NameEditor({
                 setError("");
               }}
               placeholder={t("settings.namePlaceholder")}
-              className="mt-2 w-full rounded-2xl border border-[#d8c6a4] bg-white px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#a87a3d] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
+              className="mt-2 w-full rounded-2xl border border-[#e6d3ad] bg-[#fffdf7] px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#b8834a] focus:ring-2 focus:ring-[#c9a35d]/25 dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
             />
             <p className="mt-2 text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
               {t("settings.nameHelp")}
@@ -308,7 +398,7 @@ function NameEditor({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-white/60 dark:text-[#c7b69c] dark:hover:bg-white/8"
+              className="rounded-full border border-[#e6d3ad] bg-[#fffdf7] px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-[#fbe7b8] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#c7b69c] dark:hover:bg-[#292118]"
             >
               {t("common.cancel")}
             </button>
@@ -370,7 +460,7 @@ function HospitalEditor({
 
   return (
     <ModalDialog open={true} onClose={onClose} ariaLabelledBy="hospital-editor-title">
-      <div className="report-sheet w-full max-w-[440px] overflow-y-auto rounded-t-[30px] border border-white/80 bg-[#fbf6ec]/95 p-6 pb-[max(28px,env(safe-area-inset-bottom))] shadow-[0_-18px_50px_-25px_rgba(85,55,18,0.5)] backdrop-blur-xl sm:rounded-[30px] dark:border-[#e5be79]/22 dark:bg-[#221c15]/97 dark:shadow-[0_-18px_50px_-20px_rgba(0,0,0,0.85)]">
+      <div className="report-sheet home-glass-warm max-h-[90dvh] w-full max-w-[440px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8d6a2a] dark:text-[#dfb870]">
@@ -413,7 +503,7 @@ function HospitalEditor({
                 setError("");
               }}
               placeholder={t("settings.hospitalPlaceholder")}
-              className="mt-2 w-full rounded-2xl border border-[#d8c6a4] bg-white px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#a87a3d] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
+              className="mt-2 w-full rounded-2xl border border-[#e6d3ad] bg-[#fffdf7] px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#b8834a] focus:ring-2 focus:ring-[#c9a35d]/25 dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
             />
             <p className="mt-2 text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
               {t("settings.preferredHospitalDesc")}
@@ -455,7 +545,7 @@ function HospitalEditor({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-white/60 dark:text-[#c7b69c] dark:hover:bg-white/8"
+              className="rounded-full border border-[#e6d3ad] bg-[#fffdf7] px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-[#fbe7b8] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#c7b69c] dark:hover:bg-[#292118]"
             >
               {t("common.cancel")}
             </button>
@@ -509,7 +599,7 @@ function SupplementEditor({
   return (
     <ModalDialog open={true} onClose={onClose} ariaLabelledBy="supplement-editor-title">
       <div
-        className="report-sheet w-full max-w-[440px] overflow-y-auto rounded-t-[30px] border border-white/80 bg-[#fbf6ec]/95 p-6 pb-[max(28px,env(safe-area-inset-bottom))] shadow-[0_-18px_50px_-25px_rgba(85,55,18,0.5)] backdrop-blur-xl sm:rounded-[30px] dark:border-[#e5be79]/22 dark:bg-[#221c15]/97 dark:shadow-[0_-18px_50px_-20px_rgba(0,0,0,0.85)]"
+        className="report-sheet home-glass-warm max-h-[90dvh] w-full max-w-[440px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]"
       >
         <div className="flex items-center justify-between">
           <div>
@@ -553,11 +643,11 @@ function SupplementEditor({
                 setError("");
               }}
               placeholder={t("settings.supplementPlaceholder")}
-              className="mt-2 w-full rounded-2xl border border-[#d8c6a4] bg-white px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#a87a3d] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
+              className="mt-2 w-full rounded-2xl border border-[#e6d3ad] bg-[#fffdf7] px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#b8834a] focus:ring-2 focus:ring-[#c9a35d]/25 dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:placeholder:text-[#7d6e58] dark:focus:border-[#e5be79]"
             />
           </div>
 
-          <div className="rounded-[20px] border border-[#e8d9bd] bg-white/65 p-4 dark:border-[#3d3123] dark:bg-[#1b1510]/80">
+          <div className="rounded-[22px] border border-[#d8c6a4]/70 bg-white/40 p-4 backdrop-blur-sm dark:border-[#3d3123] dark:bg-[#19140f]/50">
             <label className="flex cursor-pointer items-center gap-3 text-[14px] font-medium text-[#4a3f30] dark:text-[#f0e4ce]">
               <input
                 type="checkbox"
@@ -588,7 +678,7 @@ function SupplementEditor({
                     setTime(event.target.value);
                     setError("");
                   }}
-                  className="mt-2 w-full min-w-0 rounded-xl border border-[#d8c6a4] bg-white px-3 py-3 text-[14px] text-[#3b3226] outline-none focus:border-[#a87a3d] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:focus:border-[#e5be79]"
+                  className="mt-2 w-full min-w-0 rounded-2xl border border-[#e6d3ad] bg-[#fffdf7] px-3 py-3 text-[14px] text-[#3b3226] outline-none focus:border-[#b8834a] focus:ring-2 focus:ring-[#c9a35d]/25 dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:focus:border-[#e5be79]"
                 />
                 <p className="mt-2 text-[12px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
                   {t("settings.reminderHelp")}
@@ -657,25 +747,35 @@ function ConfirmDialog({
       open={true}
       onClose={onCancel}
       ariaLabelledBy="confirm-title"
-      containerClassName="max-w-[380px]"
+      containerClassName="max-w-[400px]"
     >
       <div
-        className="report-sheet w-full rounded-[26px] border border-white/80 bg-[#fbf6ec]/97 p-6 shadow-[0_18px_50px_-22px_rgba(85,55,18,0.55)] backdrop-blur-xl dark:border-[#e5be79]/22 dark:bg-[#221c15]/97 dark:shadow-[0_20px_54px_-18px_rgba(0,0,0,0.85)]"
+        className="report-sheet home-glass-warm max-h-[90dvh] w-full max-w-[400px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]"
       >
-        <h2
-          id="confirm-title"
-          className="text-[20px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
-        >
-          {title}
-        </h2>
-        <p className="mt-2 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
-          {body}
-        </p>
-        <div className="mt-5 flex gap-3">
+        <div className="flex items-center justify-between">
+          <h2
+            id="confirm-title"
+            className="text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
+          >
+            {title}
+          </h2>
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-full border border-[#d8c6a4] px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-white/60 dark:border-[#4a3c2c] dark:text-[#c7b69c] dark:hover:bg-white/8"
+            aria-label={t("common.close")}
+            className="home-icon-solid flex h-10 w-10 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce]"
+          >
+            <X size={19} strokeWidth={1.8} />
+          </button>
+        </div>
+        <p className="mt-3 text-[14px] leading-relaxed text-[#6f6149] dark:text-[#b9a88e]">
+          {body}
+        </p>
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-full border border-[#e6d3ad] bg-[#fffdf7] px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-[#fbe7b8] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#c7b69c] dark:hover:bg-[#292118]"
           >
             {cancelText}
           </button>
@@ -696,6 +796,79 @@ function ConfirmDialog({
   );
 }
 
+function AvatarPickerDialog({
+  current,
+  onClose,
+  onSelect,
+}: {
+  current: number;
+  onClose: () => void;
+  onSelect: (index: number) => void;
+}) {
+  const { t, isAmharic } = useTranslation();
+
+  return (
+    <ModalDialog open={true} onClose={onClose} ariaLabelledBy="avatar-picker-title">
+      <div className="report-sheet home-glass-warm max-h-[90dvh] w-full max-w-[540px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#8d6a2a] dark:text-[#dfb870]">
+              {t("settings.changeAvatar")}
+            </p>
+            <h2
+              id="avatar-picker-title"
+              className="mt-1 text-[22px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
+            >
+              {t("settings.chooseAvatar")}
+            </h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-[#85735a] dark:text-[#9c8b72]">
+              {t("settings.chooseAvatarDesc")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("common.close")}
+            className="home-icon-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce]"
+          >
+            <X size={19} strokeWidth={1.8} />
+          </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-3.5 sm:gap-4">
+          {AVATAR_OPTIONS.map((opt, i) => {
+            const isSelected = i === current;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => onSelect(i)}
+                className={`group flex flex-col items-center justify-center gap-2.5 rounded-2xl border p-4 px-2.5 sm:px-3.5 transition-all text-center min-h-[116px] w-full ${
+                  isSelected
+                    ? "border-[#8d6a2a] bg-white/80 shadow-md ring-2 ring-[#8d6a2a]/30 dark:border-[#e5be79] dark:bg-[#231b12]/80 dark:ring-[#e5be79]/30"
+                    : "border-[#d8c6a4]/60 bg-white/35 hover:bg-white/60 hover:border-[#8d6a2a]/40 dark:border-[#4a3c2c]/60 dark:bg-[#18130e]/35 dark:hover:bg-[#18130e]/60"
+                }`}
+              >
+                <div className="relative">
+                  <UserAvatar avatarIndex={i} size={54} />
+                  {isSelected && (
+                    <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#8d6a2a] text-white shadow dark:bg-[#e5be79] dark:text-[#231b12]">
+                      <Check size={12} strokeWidth={2.5} />
+                    </span>
+                  )}
+                </div>
+                <span className="text-[13px] font-medium leading-snug text-center text-[#3b3226] dark:text-[#f5ede0] px-1 line-clamp-2">
+                  {isAmharic ? opt.nameAm : opt.nameEn}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </ModalDialog>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Settings page                                                       */
 /* ------------------------------------------------------------------ */
@@ -705,6 +878,8 @@ export function SettingsPage() {
   const { t, isAmharic } = useTranslation();
   const { profile, update, resetAll } = useProfile();
   const { theme, setTheme } = useTheme();
+  const { invalidateUser, invalidateAnc, clearAll } = useInvalidateQueries();
+  const [editingAvatar, setEditingAvatar] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const nameEditButtonRef = useRef<HTMLButtonElement>(null);
   const wasEditingName = useRef(false);
@@ -713,6 +888,7 @@ export function SettingsPage() {
   const wasEditingHospital = useRef(false);
   const [editingAnc, setEditingAnc] = useState(false);
   const [ancDraft, setAncDraft] = useState(profile.nextAncDate);
+  const [ancContactNumber, setAncContactNumber] = useState<number>(1);
   const [supplementEditor, setSupplementEditor] = useState<{
     key: string;
     item: Supplement | null;
@@ -759,9 +935,20 @@ export function SettingsPage() {
             }
           }
 
+          const rawName = me.name || profile.name || "";
+          const cleanName =
+            rawName.trim().toLowerCase() !== "amara bennett" ? rawName.trim() : "";
+          const rawEmail = me.email || profile.email || "";
+          const cleanEmail =
+            rawEmail.trim().toLowerCase() !== "amara.bennett@example.com" ? rawEmail.trim() : "";
+
+          if (me.appointment?.anc_contact_number) {
+            setAncContactNumber(me.appointment.anc_contact_number);
+          }
+
           update({
-            name: me.name || profile.name,
-            email: me.email || profile.email,
+            name: cleanName,
+            email: cleanEmail,
             hospital: me.hospital || profile.hospital || "",
             nextAncDate: me.appointment?.appointment_date || profile.nextAncDate,
             supplements: backendSupplements.length > 0 ? backendSupplements : profile.supplements,
@@ -784,59 +971,86 @@ export function SettingsPage() {
   }, [message]);
 
   const saveName = async (name: string) => {
+    const prev = profile.name;
     update({ name });
     setEditingName(false);
-    setMessage(t("settings.nameUpdated"));
     if (getAccessToken()) {
       try {
         await usersApi.updateProfile({ name });
+        invalidateUser();
+        setMessage(t("settings.nameUpdated"));
+        showToast(t("settings.nameUpdated"));
       } catch (err) {
-        console.warn("Failed to sync name to backend:", err);
+        update({ name: prev });
+        showToast(err instanceof Error ? err.message : "Failed to update name", "error");
       }
+    } else {
+      setMessage(t("settings.nameUpdated"));
+      showToast(t("settings.nameUpdated"));
     }
   };
 
   const saveHospital = async (hospital: string) => {
+    const prev = profile.hospital;
     update({ hospital });
     setEditingHospital(false);
-    setMessage(t("settings.hospitalUpdated"));
     if (getAccessToken()) {
       try {
         await usersApi.updateHospital(hospital);
+        invalidateUser();
+        setMessage(t("settings.hospitalUpdated"));
+        showToast(t("settings.hospitalUpdated"));
       } catch (err) {
-        console.warn("Failed to sync hospital to backend:", err);
+        update({ hospital: prev });
+        showToast(err instanceof Error ? err.message : "Failed to update hospital", "error");
       }
+    } else {
+      setMessage(t("settings.hospitalUpdated"));
+      showToast(t("settings.hospitalUpdated"));
     }
   };
 
   const saveAncDate = async (newDate: string) => {
+    const prev = profile.nextAncDate;
     update({ nextAncDate: newDate });
     setEditingAnc(false);
-    setMessage(t("settings.appointmentUpdated"));
     if (getAccessToken()) {
       try {
+        let contactNum = ancContactNumber || 1;
+        try {
+          const sched = await ancApi.getAncSchedule();
+          if (sched?.next_anc_contact?.contact_number) {
+            contactNum = sched.next_anc_contact.contact_number;
+          }
+        } catch {}
+
         await ancApi.upsertAppointment({
           appointment_date: newDate,
-          anc_contact_number: 1,
+          anc_contact_number: contactNum,
           reminder_lead_days: 2,
         });
+        setAncContactNumber(contactNum);
+        invalidateAnc();
+        invalidateUser();
+        setMessage(t("settings.appointmentUpdated"));
+        showToast(t("settings.appointmentUpdated"));
       } catch (err) {
-        console.warn("Failed to sync appointment to backend:", err);
+        update({ nextAncDate: prev });
+        showToast(err instanceof Error ? err.message : "Failed to update appointment", "error");
       }
+    } else {
+      setMessage(t("settings.appointmentUpdated"));
+      showToast(t("settings.appointmentUpdated"));
     }
   };
 
   const saveSupplement = async (supplement: Supplement) => {
+    const prevSupplements = [...profile.supplements];
     const exists = profile.supplements.some((s) => s.id === supplement.id);
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(supplement.id);
 
-    update({
-      supplements: exists
-        ? profile.supplements.map((s) => (s.id === supplement.id ? supplement : s))
-        : [...profile.supplements, supplement],
-    });
     setSupplementEditor(null);
-    setMessage(exists ? t("settings.supplementUpdated") : t("settings.supplementAdded"));
+    const msg = exists ? t("settings.supplementUpdated") : t("settings.supplementAdded");
 
     if (getAccessToken()) {
       try {
@@ -847,6 +1061,9 @@ export function SettingsPage() {
             reminder_enabled: Boolean(supplement.reminderTime),
             reminder_time: supplement.reminderTime || null,
           });
+          update({
+            supplements: profile.supplements.map((s) => (s.id === supplement.id ? supplement : s)),
+          });
         } else {
           const created = await usersApi.createSupplement({
             name: supplement.name,
@@ -855,29 +1072,50 @@ export function SettingsPage() {
             reminder_time: supplement.reminderTime || null,
           });
           update({
-            supplements: profile.supplements.map((s) =>
-              s.id === supplement.id ? { ...s, id: created.id } : s
-            ),
+            supplements: [...profile.supplements, {
+              id: created.id,
+              name: created.name,
+              reminderTime: created.reminder_time ? created.reminder_time.slice(0, 5) : "",
+            }],
           });
         }
+        invalidateUser();
+        setMessage(msg);
+        showToast(msg);
       } catch (err) {
-        console.warn("Failed to save supplement to backend:", err);
+        update({ supplements: prevSupplements });
+        showToast(err instanceof Error ? err.message : "Failed to save supplement", "error");
       }
+    } else {
+      update({
+        supplements: exists
+          ? profile.supplements.map((s) => (s.id === supplement.id ? supplement : s))
+          : [...profile.supplements, supplement],
+      });
+      setMessage(msg);
+      showToast(msg);
     }
   };
 
   const deleteSupplement = async (id: string) => {
+    const prevSupplements = [...profile.supplements];
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     update({ supplements: profile.supplements.filter((s) => s.id !== id) });
     setSupplementEditor(null);
-    setMessage(t("settings.supplementRemoved"));
 
     if (getAccessToken() && isUuid) {
       try {
         await usersApi.deleteSupplement(id);
+        invalidateUser();
+        setMessage(t("settings.supplementRemoved"));
+        showToast(t("settings.supplementRemoved"));
       } catch (err) {
-        console.warn("Failed to delete supplement from backend:", err);
+        update({ supplements: prevSupplements });
+        showToast(err instanceof Error ? err.message : "Failed to delete supplement", "error");
       }
+    } else {
+      setMessage(t("settings.supplementRemoved"));
+      showToast(t("settings.supplementRemoved"));
     }
   };
 
@@ -889,13 +1127,13 @@ export function SettingsPage() {
         <div className="absolute -left-24 bottom-[5%] h-[300px] w-[300px] rounded-full bg-[#f7dfb3] opacity-50 blur-[100px] dark:bg-[#6e4c1b] dark:opacity-16" />
       </div>
 
-      <main className="relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[720px] md:px-8">
-        <header className="mt-3 flex items-center gap-3 sm:mt-4">
+      <main className="page-enter relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[720px] md:px-8">
+        <header className="mt-3 flex items-center gap-3 sm:mt-4 page-enter">
           <Link
             href="/home"
             prefetch={true}
             aria-label={t("common.back")}
-            className="home-icon-solid flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
+            className="home-icon-solid flex h-12 w-12 min-h-12 min-w-12 shrink-0 aspect-square items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce] transition hover:border-[#c9a35d]/70 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
           >
             <ChevronLeft size={20} strokeWidth={1.8} />
           </Link>
@@ -907,18 +1145,32 @@ export function SettingsPage() {
           <LanguageSwitcher />
         </header>
 
-        <section aria-label={t("settings.profile")} className="mt-7 flex items-start gap-4">
-          <Image
-            src="/images/avatar.jpg"
-            alt={profile.name}
-            width={64}
-            height={64}
-            className="mt-1 h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-[#e5be79]/35"
-          />
+        <section aria-label={t("settings.profile")} className="mt-7 flex items-start gap-4 page-enter">
+          <div className="relative mt-1 group">
+            <button
+              type="button"
+              onClick={() => setEditingAvatar(true)}
+              aria-label={t("settings.changeAvatar")}
+              aria-haspopup="dialog"
+              className="relative rounded-full transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
+            >
+              <UserAvatar
+                name={profile.name}
+                avatarIndex={profile.avatarIndex}
+                size={64}
+              />
+              <span
+                className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-white/90 bg-white text-[#6f5a35] shadow-sm transition group-hover:bg-[#fbe7b8] dark:border-[#4a3c2c] dark:bg-[#231b12] dark:text-[#dfb870]"
+                aria-hidden="true"
+              >
+                <Pencil size={11} strokeWidth={2} />
+              </span>
+            </button>
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <p className="min-w-0 text-[20px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0] [overflow-wrap:anywhere]">
-                {profile.name}
+                {profile.name?.trim() || (isAmharic ? "እናት" : "Mama")}
               </p>
               <button
                 ref={nameEditButtonRef}
@@ -941,7 +1193,8 @@ export function SettingsPage() {
         </section>
 
         <div className="mt-6 space-y-4">
-          {/* Appearance / Theme changer */}
+          <div className="space-y-4 page-stagger-1">
+            {/* Appearance / Theme changer */}
           <Card
             title={t("settings.appearance")}
             description={
@@ -953,6 +1206,20 @@ export function SettingsPage() {
             <AppearanceSelector
               theme={theme}
               onSelect={(next, event) => setTheme(next, event)}
+            />
+          </Card>
+
+          {/* Calendar System (Ethiopian / Gregorian) */}
+          <Card
+            title={t("settings.calendarSystem")}
+            description={t("settings.calendarSystemDesc")}
+          >
+            <CalendarSystemSelector
+              value={profile.calendarSystem ?? "ethiopian"}
+              onSelect={(next) => {
+                update({ calendarSystem: next });
+                showToast(t("settings.calendarUpdated"));
+              }}
             />
           </Card>
 
@@ -1045,9 +1312,11 @@ export function SettingsPage() {
               </div>
             )}
           </Card>
+          </div>
 
           {/* Supplements */}
-          <Card title={t("settings.supplements")} description={t("settings.supplementsDesc")}>
+          <div className="page-stagger-2">
+            <Card title={t("settings.supplements")} description={t("settings.supplementsDesc")}>
             {profile.supplements.length > 0 ? (
               <ul className="divide-y divide-[#b98a3e]/15 dark:divide-[#e5be79]/12">
                 {profile.supplements.map((supplement) => (
@@ -1102,10 +1371,12 @@ export function SettingsPage() {
             >
               <Plus size={18} strokeWidth={1.9} aria-hidden="true" /> {t("settings.addSupplement")}
             </button>
-          </Card>
+            </Card>
+          </div>
 
           {/* Account actions */}
-          <Card title={t("settings.account")}>
+          <div className="page-stagger-3">
+            <Card title={t("settings.account")}>
             <div className="flex flex-col gap-2">
               <button
                 type="button"
@@ -1143,7 +1414,8 @@ export function SettingsPage() {
                 </span>
               </button>
             </div>
-          </Card>
+            </Card>
+          </div>
         </div>
       </main>
 
@@ -1176,6 +1448,18 @@ export function SettingsPage() {
         />
       )}
 
+      {editingAvatar && (
+        <AvatarPickerDialog
+          current={resolveAvatarIndex(profile.name, profile.avatarIndex)}
+          onClose={() => setEditingAvatar(false)}
+          onSelect={(nextIndex) => {
+            update({ avatarIndex: nextIndex });
+            setEditingAvatar(false);
+            showToast(t("settings.avatarUpdated"));
+          }}
+        />
+      )}
+
       {confirm === "logout" && (
         <ConfirmDialog
           title={t("settings.logoutTitle")}
@@ -1189,7 +1473,9 @@ export function SettingsPage() {
             } catch {
               // Ignore logout network issues
             }
-            clearTokens();
+            clearAll();
+            clearUserSessionData();
+            clearNotifications();
             resetAll();
             setConfirm(null);
             router.replace("/login");
@@ -1210,7 +1496,8 @@ export function SettingsPage() {
             } catch {
               // Ignore
             }
-            clearTokens();
+            clearUserSessionData();
+            clearNotifications();
             resetAll();
             setConfirm(null);
             router.replace("/");

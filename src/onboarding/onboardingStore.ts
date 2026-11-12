@@ -39,9 +39,6 @@ export type OnboardingData = {
   completed: boolean;
 };
 
-const KEY = "mama-health-onboarding-v1";
-const LEGACY_KEY = "aurelia-onboarding-v1";
-
 export const EMPTY_ONBOARDING: OnboardingData = {
   age: "",
   residence: "Urban",
@@ -101,38 +98,14 @@ export const ETHIOPIAN_HOSPITALS = [
   "Other / Health Center",
 ];
 
+let sessionOnboarding: OnboardingData = { ...EMPTY_ONBOARDING };
+
 export function loadOnboarding(): OnboardingData {
-  try {
-    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<OnboardingData>;
-      return {
-        ...EMPTY_ONBOARDING,
-        ...parsed,
-        hospital: typeof parsed.hospital === "string" ? parsed.hospital : "",
-        customHospital: typeof parsed.customHospital === "string" ? parsed.customHospital : "",
-        calendar:
-          parsed.calendar === "ethiopian" || parsed.calendar === "gregorian"
-            ? parsed.calendar
-            : "gregorian",
-        customComplications: Array.isArray(parsed.customComplications)
-          ? parsed.customComplications
-          : [],
-        customConditions: Array.isArray(parsed.customConditions) ? parsed.customConditions : [],
-      };
-    }
-  } catch {
-    // Storage unavailable — use defaults.
-  }
-  return EMPTY_ONBOARDING;
+  return { ...sessionOnboarding };
 }
 
 export function saveOnboarding(data: OnboardingData) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(data));
-  } catch {
-    // In-memory progress still works.
-  }
+  sessionOnboarding = { ...data };
 }
 
 /* ------------------------------------------------------------------ */

@@ -46,15 +46,15 @@
     "methodTitleHighlight": "with you,",
     "methodTitlePost": "week by week.",
     "methodSub": "Gentle tools that fit into your day. No dashboards to decode, no alarms to dread.",
-    "step1Title": "A gentle morning check-in",
-    "step1Body": "Mood, sleep, blood pressure and symptoms, gathered in about a minute and shaped into a clear picture your midwife can read at a glance.",
-    "step1Meta": "About a minute · every morning",
-    "step2Title": "Kick counts & contraction timing",
-    "step2Body": "Simple, rhythmic logging that learns your baby's usual patterns, and quietly lets you know when a call to your midwife is worth making.",
-    "step2Meta": "One tap · learns your rhythm",
-    "step3Title": "A midwife, whenever you need one",
-    "step3Body": "Real registered midwives, not scripts. Every conversation is kept in your shared care record, so you never have to explain yourself twice.",
-    "step3Meta": "Replies in minutes · day or night",
+    "step1Title": "A gentle daily voice check-in",
+    "step1Body": "Speak naturally in Amharic or English to share how you are feeling, what you have eaten, and your prenatal vitamins—understood and organized in seconds.",
+    "step1Meta": "Under a minute · In your own language",
+    "step2Title": "Nutrition & prenatal supplement tracking",
+    "step2Body": "Easily track your daily food groups—grains, proteins, dairy, and fruits & vegetables—and stay consistent with your prescribed Iron, Folic Acid, and Calcium supplements for a healthy pregnancy.",
+    "step2Meta": "Dietary diversity · IFA & Calcium adherence",
+    "step3Title": "Clinical ANC reports & safety alerts",
+    "step3Body": "Automatic detection of pregnancy danger signs with immediate guidance, plus WHO-aligned clinical summary reports you can share directly with your healthcare provider via a secure link or QR code.",
+    "step3Meta": "WHO-aligned reports · Instant QR sharing",
     "learnMore": "Learn more",
     "modalTag": "Mama Health Maternal Care",
     "modalTitle": "Your journey begins with soft, continuous care.",
@@ -88,7 +88,7 @@
     "supplementsTaken": "supplements taken",
     "shareReport": "Share latest report",
     "startVoice": "Start your voice check-in",
-    "aboutOneMin": "ABOUT 1 MIN",
+    "aboutOneMin": "About 1 min",
     "logByHand": "Log by hand",
     "quickFoodSupplements": "Food & supplements",
     "weeklyProgress": "Weekly check-ins",
@@ -172,7 +172,39 @@
       "Back pain": "Back pain",
       "Swelling": "Swelling",
       "Heartburn": "Heartburn",
-      "Insomnia": "Insomnia"
+      "Insomnia": "Insomnia",
+      "Severe headache": "Severe headache",
+      "Blurred vision": "Blurred vision",
+      "Vaginal bleeding": "Vaginal bleeding",
+      "Fluid leakage": "Fluid leakage",
+      "Severe abdominal pain": "Severe abdominal pain",
+      "Abdominal pain": "Abdominal pain",
+      "High fever": "High fever",
+      "Difficulty breathing": "Difficulty breathing",
+      "Decreased fetal movement": "Decreased fetal movement",
+      "Dizziness": "Dizziness",
+      "Vomiting": "Vomiting",
+      "Cramps": "Cramps",
+      "Reported symptom": "Reported symptom",
+      "አዎ": "አዎ",
+      "ራስ ምታት": "Headache",
+      "ጽኑ ራስ ምታት": "Severe headache",
+      "የዓይን ብዥታ": "Blurred vision",
+      "የደም መፍሰስ": "Vaginal bleeding",
+      "የፈሳሽ መፍሰስ": "Fluid leakage",
+      "ከፍተኛ የሆድ ህመም": "Severe abdominal pain",
+      "የሆድ ህመም": "Abdominal pain",
+      "ከፍተኛ ትኩሳት": "High fever",
+      "የመተንፈስ ችግር": "Difficulty breathing",
+      "ማቅለሽለሽ": "Nausea",
+      "ማስታወክ": "Vomiting",
+      "ድካም": "Fatigue",
+      "የወገብ ህመም": "Back pain",
+      "እብጠት": "Swelling",
+      "የሆድ ቃጠሎ": "Heartburn",
+      "የእንቅልፍ እጦት": "Insomnia",
+      "የማዞር ስሜት": "Dizziness",
+      "የተመዘገበ ምልክት": "Reported symptom"
     },
     "foodGroupsMap": {
       "Grains": "Grains",
@@ -209,7 +241,11 @@
     },
     "supplementsMap": {
       "Iron": "Iron",
-      "Folic acid": "Folic acid"
+      "Folic acid": "Folic acid",
+      "Iron & Folic Acid (IFA)": "Iron & Folic Acid (IFA)",
+      "Calcium Supplement": "Calcium Supplement",
+      "Calcium": "Calcium",
+      "Multiple Micronutrients (MMN)": "Multiple Micronutrients (MMN)"
     }
   },
   "voice": {
@@ -232,6 +268,8 @@
     "startPrompt": "Tap record to begin",
     "listeningPrompt": "Listening… speak now.",
     "understandPrompt": "Understanding your words…",
+    "noVoiceDetected": "Didn't quite catch that. Speak loudly to your microphone.",
+    "speakLoudlyHint": "Speak clearly and loudly to your microphone to record your answer, or tap edit to type.",
     "editHint": "Fix any words, then hit confirm.",
     "tapEditOrRedo": "Tap edit or re-record to change your answer.",
     "redo": "redo",
@@ -242,7 +280,8 @@
     "skip": "skip",
     "dangerHeadline": "A danger sign was detected",
     "dangerContactDoctor": "Please contact your doctor or midwife now — don't wait for your next appointment.",
-    "dangerEmergency": "Call 911 — emergency",
+    "dangerEmergency": "Call 907 Red Cross Ambulance",
+    "callRedCrossAmbulance": "Call 907 Red Cross Ambulance",
     "callDoctor": "Call your doctor",
     "urgentCareAdvice": "If you feel very unwell, have trouble seeing, or are in pain, seek urgent care.",
     "stayWithSomeoneAdvice": "Ask someone to stay with you until you have spoken to a clinician.",
@@ -285,6 +324,13 @@
     "darkThemeSub": "Candlelit calm",
     "darkMode": "Dark mode",
     "lightMode": "Light mode",
+    "calendarSystem": "Calendar system",
+    "calendarSystemDesc": "Choose whether your pregnancy journey and calendar display in Ethiopian (ዓ.ም.) or Gregorian (G.C.) dates.",
+    "ethiopianCalendar": "Ethiopian Calendar",
+    "ethiopianCalendarSub": "ዓ.ም. · 13 months (Meskerem–Pagume)",
+    "gregorianCalendar": "Gregorian Calendar",
+    "gregorianCalendarSub": "G.C. · 12 months (January–December)",
+    "calendarUpdated": "Calendar system updated",
     "language": "Language",
     "account": "Account",
     "signOut": "Log out",
@@ -314,7 +360,11 @@
     "hospitalPlaceholder": "e.g. St. Paul's Hospital Millennium Medical College",
     "hospitalUpdated": "Hospital updated",
     "saveHospital": "Save hospital",
-    "enterHospitalError": "Enter or select a hospital."
+    "enterHospitalError": "Enter or select a hospital.",
+    "changeAvatar": "Change avatar",
+    "chooseAvatar": "Choose your avatar",
+    "chooseAvatarDesc": "Select a light, gentle symbol to accompany your journey.",
+    "avatarUpdated": "Avatar updated"
   },
   "notifications": {
     "title": "Notifications",
@@ -577,6 +627,47 @@
     "hospital": "Preferred hospital or health center",
     "hospitalPlaceholder": "Select hospital or health center (optional)",
     "hospitalOther": "Enter hospital or clinic name",
-    "hospitalHint": "Connects your summaries and ANC appointments with your facility."
+    "hospitalHint": "Connects your summaries and ANC appointments with your facility.",
+    "stageHelp": {
+      "buttonLabel": "Help for this question",
+      "whatItMeans": "What this means",
+      "howToAnswer": "How to answer",
+      "close": "Close",
+      "1": {
+        "title": "About You",
+        "meaning": "Basic personal and medical history used to establish your WHO antenatal care profile and customize local healthcare post referrals.",
+        "guide": "Enter your age, your residence area (urban or rural), your assigned clinic or hospital, and your previous pregnancies and live births."
+      },
+      "2": {
+        "title": "Pregnancy Dating",
+        "meaning": "Calculates your exact gestational weeks and estimated due date to ensure each of your 8 WHO antenatal appointments are scheduled at the right time.",
+        "guide": "Choose LMP if you know the first day of your last period, or choose 'I know the date' if an ultrasound or midwife already provided your weeks. Supports Ethiopian and Gregorian calendars."
+      },
+      "3": {
+        "title": "Pregnancy History",
+        "meaning": "Screens for prior cesarean deliveries, stillbirths, malaria exposure, or obstetric complications that require specialized clinical vigilance.",
+        "guide": "Answer Yes or No to each question honestly. Select any past complications that occurred, or use 'Other' to describe any past maternal issue."
+      },
+      "4": {
+        "title": "Medical Conditions",
+        "meaning": "Identifies pre-existing chronic conditions (like hypertension, diabetes, or anemia) that require closer monitoring during your pregnancy.",
+        "guide": "Tap any condition diagnosed by a doctor or clinic to select it. Tap again to uncheck. Use 'Other' to add conditions not listed."
+      },
+      "5": {
+        "title": "Medications",
+        "meaning": "Ensures all daily prescription, over-the-counter, or traditional treatments are documented for clinical safety during pregnancy.",
+        "guide": "Select Yes if currently taking any medication, type each medicine name, and tap Save. You can check or uncheck added items at any time."
+      },
+      "6": {
+        "title": "Supplements",
+        "meaning": "Monitors essential prenatal vitamins (such as Iron, Folic Acid, and Calcium) that prevent maternal anemia and support fetal neural development.",
+        "guide": "Select Yes if you take supplements and check all prescribed products (e.g. Iron & Folic Acid, Calcium) provided by your clinic."
+      },
+      "7": {
+        "title": "Voice Check-in Practice",
+        "meaning": "Mama Health uses daily voice check-ins so you can speak freely in Amharic or English about how you feel without tedious typing.",
+        "guide": "Tap the microphone, listen to the short question, and speak a brief reply to test your audio. You can also tap 'Skip for now' anytime."
+      }
+    }
   }
 }

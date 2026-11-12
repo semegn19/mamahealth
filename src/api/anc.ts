@@ -46,7 +46,9 @@ export type AppointmentCalendarLinks = {
 
 export type AppointmentTransitionPayload = {
   action: "completed" | "missed" | "rescheduled";
-  new_date?: string | null;
+  version: number;
+  appointment_date?: string | null;
+  anc_contact_number?: number | null;
 };
 
 export const ancApi = {
