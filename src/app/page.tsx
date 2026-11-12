@@ -5,7 +5,6 @@ import { Footer } from "@/sections/Footer";
 import { LandingHeader } from "@/landing/LandingHeader";
 import { LandingHeroCTA } from "@/landing/LandingHeroCTA";
 import { LandingHeroHeadline } from "@/landing/LandingHeroHeadline";
-import { JourneyModal } from "@/landing/JourneyModal";
 
 export const metadata: Metadata = {
   title: "Mama Health — Gentle care for every stage of motherhood",
@@ -57,9 +56,6 @@ export default function Page() {
 
       {/* FOOTER (Server Component) */}
       <Footer />
-
-      {/* Gentle Journey Modal (Client Component island) */}
-      <JourneyModal />
     </main>
   );
 }

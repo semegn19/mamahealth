@@ -101,7 +101,7 @@ const FOLDS = [
 ];
 
 /**
- * Pregnant woman in leaves vector artwork — rendered for the "Kick counts & contraction timing" step.
+ * Pregnant woman in leaves vector artwork — rendered for the "Nutrition & prenatal supplement tracking" step.
  * Uses luminous, warm champagne-and-gold gradients harmonized with the rest of the Mama Health illustrations,
  * featuring a delicate hand-drawn stroke animation:
  * 1. Stems trace on first as graceful growing vines.
