@@ -22,23 +22,39 @@ import { BottomNav, type NavKey } from "../components/BottomNav";
 import { HomeTopBar } from "../components/HomeTopBar";
 import { useTranslation } from "../components/languageStore";
 import { usePathname, useRouter } from "next/navigation";
-import { useProfile } from "../settings/profileStore";
+import { useProfile, updateProfile, type Profile } from "../settings/profileStore";
+import {
+  formatEthiopianMonthTitle,
+  formatEthiopianShortDate,
+  gregorianDateToEthiopian,
+} from "../calendar/ethiopianCalendar";
 import { useNotifications } from "../notifications/notificationsData";
 import { ShareReportDialog } from "../report/ShareReportDialog";
 import {
   REPORT_ARCHIVE,
   backendSummaryToArchiveItem,
+  getCanonicalDangerKey,
   type ReportArchiveItem,
 } from "../report/reportCatalog";
 import { QuickLogDialog } from "../logs/QuickLogDialog";
-import { mockAgendaFor as agendaFor } from "../mock/calendar";
+import { useManualFood, useManualSupplements, todayKey } from "../logs/quickLogStore";
+import { backendCheckinToFrontendLog, type CheckinLog } from "../logs/checkinLogsData";
+import { getCanonicalSupplementKey } from "../constants/checkinPrompts";
 import {
   ancApi,
+  calendarApi,
+  checkinApi,
+  getAccessToken,
   reportsApi,
+  useAncSchedule,
+  useCheckinHistory,
+  useCurrentUser,
+  useLatestSummary,
   usersApi,
   type CurrentPregnancyStatus,
   type UserAppointment,
   type WHOANCContact,
+  type ANCScheduleResponse,
 } from "../api";
 
 /* ------------------------------------------------------------------ */
@@ -157,11 +173,61 @@ function ProgressRing({ value, max, label }: { value: number; max: number; label
 export { BottomNav, HomeTopBar };
 export type { NavKey };
 
-function TopSection({ now, pregnancy }: { now: Date; pregnancy?: CurrentPregnancyStatus | null }) {
-  const { t } = useTranslation();
+export function getBabySizeMilestone(week: number, isAmharic: boolean): string {
+  if (week <= 4) {
+    return isAmharic ? "ፅንሱ የፖፒ ፍሬ ያህል ነው" : "Baby is the size of a poppy seed";
+  }
+  if (week <= 7) {
+    return isAmharic ? "ፅንሱ የአተር ፍሬ ያህል ነው" : "Baby is the size of a sweet pea";
+  }
+  if (week <= 10) {
+    return isAmharic ? "ፅንሱ የእንጆሪ ፍሬ ያህል ነው" : "Baby is the size of a raspberry";
+  }
+  if (week <= 13) {
+    return isAmharic ? "ፅንሱ የሎሚ ፍሬ ያህል ነው" : "Baby is the size of a lime";
+  }
+  if (week <= 17) {
+    return isAmharic ? "ፅንሱ የአቮካዶ ያህል ነው" : "Baby is the size of an avocado";
+  }
+  if (week <= 21) {
+    return isAmharic ? "ፅንሱ የሙዝ ያህል ነው" : "Baby is the size of a banana";
+  }
+  if (week <= 25) {
+    return isAmharic ? "ፅንሱ የበቆሎ እሸት ያህል ነው" : "Baby is the size of an ear of corn";
+  }
+  if (week <= 29) {
+    return isAmharic ? "ፅንሱ የደበርጃን ያህል ነው" : "Baby is the size of an eggplant";
+  }
+  if (week <= 33) {
+    return isAmharic ? "ፅንሱ የዱባ ያህል ነው" : "Baby is the size of a squash";
+  }
+  if (week <= 37) {
+    return isAmharic ? "ፅንሱ የፓፓያ ያህል ነው" : "Baby is the size of a papaya";
+  }
+  return isAmharic ? "ፅንሱ የሐብሐብ ያህል ነው" : "Baby is the size of a watermelon";
+}
 
-  const currentWeek = pregnancy?.gestational_age_weeks ?? 24;
-  const trimesterKey = pregnancy?.trimester;
+function TopSection({ now, pregnancy }: { now: Date; pregnancy?: CurrentPregnancyStatus | null }) {
+  const { t, isAmharic } = useTranslation();
+  const { profile } = useProfile();
+
+  const getDerivedWeek = () => {
+    if (pregnancy?.gestational_age_weeks != null) return pregnancy.gestational_age_weeks;
+    if (profile.gestationalAgeWeeks != null) return profile.gestationalAgeWeeks;
+    if (profile.lnmpDate) {
+      const lmp = new Date(profile.lnmpDate);
+      const diff = Math.max(0, Math.floor((Date.now() - lmp.getTime()) / (1000 * 60 * 60 * 24)));
+      return Math.max(1, Math.floor(diff / 7));
+    }
+    return 1;
+  };
+
+  const currentWeek = getDerivedWeek();
+  const trimesterKey =
+    pregnancy?.trimester ||
+    profile.trimester ||
+    (currentWeek < 14 ? "first_trimester" : currentWeek < 28 ? "second_trimester" : "third_trimester");
+
   const getTrimesterLabel = () => {
     if (trimesterKey === "first_trimester") {
       const label = t("home.firstTrimester");
@@ -197,7 +263,7 @@ function TopSection({ now, pregnancy }: { now: Date; pregnancy?: CurrentPregnanc
               {t("home.progressTitle")}
             </h2>
             <p className="mt-2 text-[13px] text-[#6f5a35] dark:text-[#d8c7ab]">
-              {t("home.babySize")}
+              {getBabySizeMilestone(currentWeek, isAmharic)}
             </p>
           </div>
           <ProgressRing value={currentWeek} max={40} label={t("home.weeks")} />
@@ -215,16 +281,184 @@ function StatsSection({
   latestReport?: ReportArchiveItem | null;
 }) {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, isAmharic } = useTranslation();
+  const { profile } = useProfile();
+  const calendarSystem = profile.calendarSystem ?? "ethiopian";
   const day = WEEKDAY_SHORT[now.getDay()];
   const [shareOpen, setShareOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
-  const reportToShare = latestReport || REPORT_ARCHIVE[0];
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const reportToShare = latestReport || REPORT_ARCHIVE[0] || null;
+  const shareId = reportToShare?.id || "current";
+  const shareAppointment =
+    reportToShare?.appointment || t("home.shareReport");
+
+  const todayLabel = useMemo(() => {
+    if (calendarSystem === "ethiopian") {
+      return `${t("home.today")}, ${formatEthiopianShortDate(now, isAmharic)}`;
+    }
+    return `${t("home.today")}, ${day}`;
+  }, [calendarSystem, now, isAmharic, t, day]);
+
+  const { items: foodItems } = useManualFood();
+  const { items: supplementItems } = useManualSupplements();
+  const { data: rawHistory } = useCheckinHistory(20);
+  const historyLogs = useMemo(() => {
+    return Array.isArray(rawHistory) ? rawHistory.map(backendCheckinToFrontendLog) : [];
+  }, [rawHistory]);
+
+  const todayLogs = historyLogs.filter((l) => {
+    try {
+      const d = l.date instanceof Date ? l.date : new Date(l.date);
+      if (sameDay(d, now)) return true;
+      return d.toISOString().slice(0, 10) === now.toISOString().slice(0, 10);
+    } catch {
+      return false;
+    }
+  });
+
+  // Food groups calculation
+  const todayFood = foodItems.find((f) => f.date === todayKey(now));
+  const loggedFoodGroups = new Set<string>();
+
+  if (todayFood && Array.isArray(todayFood.groups)) {
+    todayFood.groups.forEach((g) => loggedFoodGroups.add(String(g)));
+  }
+
+  for (const log of todayLogs) {
+    if (Array.isArray(log.food_log)) {
+      for (const fl of log.food_log) {
+        if (Array.isArray(fl.food_groups)) {
+          fl.food_groups.forEach((g: string) => loggedFoodGroups.add(String(g).toLowerCase().trim()));
+        }
+      }
+    }
+    const checkinFoodEntry = log.entries?.find(
+      (e: any) =>
+        e.question?.toLowerCase().includes("eaten") ||
+        e.question?.toLowerCase().includes("food") ||
+        (e.question_am && e.question_am.includes("ተመገቡ")),
+    );
+    if (checkinFoodEntry && !checkinFoodEntry.skipped && checkinFoodEntry.answer) {
+      const raw = String(checkinFoodEntry.answer).toLowerCase();
+      if (!/^(none|nothing|skip|ምንም|አልተመገብኩም|check-in stopped)$/i.test(raw.trim())) {
+        if (/grain|bread|injera|teff|rice|wheat|ዳቦ|እንጀራ|ሩዝ/.test(raw)) loggedFoodGroups.add("grains");
+        if (/protein|meat|egg|shiro|misir|lentil|beans|ስጋ|እንቁላል|ሽሮ|ምስር/.test(raw)) loggedFoodGroups.add("proteins");
+        if (/dairy|milk|cheese|ayib|yogurt|ወተት|አይብ/.test(raw)) loggedFoodGroups.add("dairy");
+        if (/fruit|veg|banana|orange|greens|gomen|tomato|ሙዝ|ጎመን|ቲማቲም/.test(raw)) loggedFoodGroups.add("fruits_and_vegetables");
+        if (loggedFoodGroups.size === 0) loggedFoodGroups.add("regular_meals");
+      }
+    }
+  }
+  const foodCount = loggedFoodGroups.size;
+
+  // Supplements calculation
+  const takenSupplements = new Set<string>();
+  supplementItems
+    .filter((s) => s.taken)
+    .forEach((s) => {
+      takenSupplements.add(getCanonicalSupplementKey(s.name || s.id));
+    });
+
+  for (const log of todayLogs) {
+    let hadStructuredSupplements = false;
+    if (Array.isArray(log.supplement_check) && log.supplement_check.length > 0) {
+      for (const s of log.supplement_check) {
+        hadStructuredSupplements = true;
+        if (s.taken === true || s.taken_today === true) {
+          takenSupplements.add(getCanonicalSupplementKey(s.supplement_name || s.name));
+        }
+      }
+    }
+
+    if (!hadStructuredSupplements) {
+      const supEntry = log.entries?.find(
+        (e: any) =>
+          e.question?.toLowerCase().includes("supplement") ||
+          e.question?.toLowerCase().includes("vitamin") ||
+          e.question?.toLowerCase().includes("iron") ||
+          (e.question_am && (e.question_am.includes("እንክብል") || e.question_am.includes("ቫይታሚን"))),
+      );
+      if (supEntry && !supEntry.skipped && supEntry.answer) {
+        const ans = String(supEntry.answer);
+        const isNeg = /\bnot\s+taken\b|\bnot\b|\bdidn't\b|አልተወሰደም|አልወሰድኩም/i.test(ans);
+        if (!isNeg) {
+          const isPos =
+            /(?<!not\s+)(?<!didn't\s+)\b(taken|took|yes\b|yeah|sure|already|both|all)\b|(?<!አል)(?:ተወስዷል|ተወስዷ|ወሰድኩ|ወሰድኩት|ወስጃለሁ)|(?:\s|^)አዎ(?:\s|$)/i.test(
+              ans,
+            );
+          if (isPos) {
+            const hasIron = /iron|ifa|folic|ብረት|ፎሊክ/i.test(ans);
+            const hasCal = /calcium|ካልሲየም/i.test(ans);
+            if (hasIron) takenSupplements.add("iron_folic_acid");
+            if (hasCal) takenSupplements.add("calcium");
+            if (!hasIron && !hasCal) {
+              if (Array.isArray(profile.supplements) && profile.supplements.length > 0) {
+                profile.supplements.forEach((ps) => {
+                  takenSupplements.add(getCanonicalSupplementKey(ps.name || ps.id));
+                });
+              } else {
+                takenSupplements.add("iron_folic_acid");
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  const suppCount = takenSupplements.size;
+
+  // Symptoms calculation - directly count recorded symptoms from today's check-in(s)
+  const seenSymptoms = new Set<string>();
+
+  for (const log of todayLogs) {
+    if (log.dangerSigns && Array.isArray(log.dangerSigns)) {
+      for (const ds of log.dangerSigns) {
+        const key = getCanonicalDangerKey(ds);
+        if (key && key !== "unknown_danger") {
+          seenSymptoms.add(key);
+        }
+      }
+    }
+
+    if (log.symptoms && Array.isArray(log.symptoms)) {
+      for (const s of log.symptoms) {
+        if (!s) continue;
+        const raw = (s.raw_text || s.category_display_en || s.category_display || "").trim();
+        const cat = s.category ? String(s.category).trim() : null;
+        const lower = (raw || cat || "").toLowerCase();
+        if (lower === "no symptoms reported. feeling well." || lower === "no symptoms") {
+          continue;
+        }
+
+        const canKey = getCanonicalDangerKey({
+          category: cat,
+          name: s.category_display_en || raw,
+          name_am: s.category_display || raw,
+          raw_text: raw,
+        });
+
+        if (canKey && canKey !== "unknown_danger") {
+          seenSymptoms.add(canKey);
+        } else if (raw) {
+          seenSymptoms.add(raw.toLowerCase());
+        } else if (cat) {
+          seenSymptoms.add(cat.toLowerCase());
+        }
+      }
+    }
+
+    if (log.danger_sign_triggered && seenSymptoms.size === 0) {
+      seenSymptoms.add("clinical_danger_sign");
+    }
+  }
+
+  const symptomsCount = seenSymptoms.size;
 
   const journey = [
-    { value: "4", unit: t("home.symptoms") },
-    { value: "3", unit: t("home.foodGroups") },
-    { value: "2", unit: t("home.supplementsTaken") },
+    { value: String(symptomsCount), unit: t("home.symptoms") },
+    { value: String(foodCount), unit: t("home.foodGroups") },
+    { value: String(suppCount), unit: t("home.supplementsTaken") },
   ];
 
   return (
@@ -233,11 +467,11 @@ function StatsSection({
         {/* LEFT — journey + share report */}
         <div className="flex flex-col gap-3">
           {/* Compact journey card */}
-          <article data-dashboard-card className="home-glass-bronze rounded-[26px] p-5 text-[#fffaf0]">
+          <article data-dashboard-card className="home-glass-bronze relative overflow-hidden rounded-[26px] p-5 text-[#fffaf0]">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em]">{t("home.journey")}</p>
-                <p className="mt-1 text-[11px] text-[#fff3dc]/80">{t("home.today")}, {day}</p>
+                <p className="text-[13px] font-medium text-[#fffaf0]">{t("home.journey")}</p>
+                <p className="mt-1 text-[11.5px] text-[#fff3dc]/80">{todayLabel}</p>
               </div>
               <Route size={17} strokeWidth={1.7} />
             </div>
@@ -297,7 +531,7 @@ function StatsSection({
             <p className="mt-3.5 text-[16.5px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
               {t("home.startVoice")}
             </p>
-            <p className="mt-1 text-[11.5px] tracking-[0.08em] text-[#85735a] dark:text-[#9c8b72]">
+            <p className="mt-1 text-[12px] font-normal text-[#85735a] dark:text-[#9c8b72]">
               {t("home.aboutOneMin")}
             </p>
           </Link>
@@ -323,7 +557,7 @@ function StatsSection({
             <p className="mt-2 text-[15px] font-medium leading-snug tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
               {t("home.logByHand")}
             </p>
-            <p className="mt-0.5 text-[11px] tracking-[0.08em] text-[#85735a] dark:text-[#9c8b72]">
+            <p className="mt-0.5 text-[12px] font-normal text-[#85735a] dark:text-[#9c8b72]">
               {t("home.quickFoodSupplements")}
             </p>
           </button>
@@ -333,11 +567,17 @@ function StatsSection({
       <ShareReportDialog
         open={shareOpen}
         onClose={() => setShareOpen(false)}
-        reportId={reportToShare.id}
-        appointment={reportToShare.appointment}
+        reportId={shareId}
+        appointment={shareAppointment}
       />
 
-      <QuickLogDialog open={logOpen} onClose={() => setLogOpen(false)} />
+      <QuickLogDialog
+        open={logOpen}
+        onClose={() => {
+          setLogOpen(false);
+          setHistoryRefreshKey((k) => k + 1);
+        }}
+      />
     </>
   );
 }
@@ -346,12 +586,16 @@ function CalendarSection({
   now,
   appointment,
   nextAnc,
+  ancSchedule,
 }: {
   now: Date;
   appointment?: UserAppointment | null;
   nextAnc?: WHOANCContact | null;
+  ancSchedule?: ANCScheduleResponse | null;
 }) {
   const { t, isAmharic } = useTranslation();
+  const { profile } = useProfile();
+  const calendarSystem = profile.calendarSystem ?? "ethiopian";
   const dayLetters = useMemo(
     () => (isAmharic ? ["እ", "ሰ", "ማ", "ረ", "ሐ", "ዓ", "ቅ"] : ["S", "M", "T", "W", "T", "F", "S"]),
     [isAmharic],
@@ -363,6 +607,31 @@ function CalendarSection({
     d.setHours(0, 0, 0, 0);
     return d;
   });
+  const [calendarItems, setCalendarItems] = useState<any[]>([]);
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    calendarApi
+      .listItems()
+      .then((items) => {
+        if (!active) return;
+        setCalendarItems(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {});
+
+    checkinApi
+      .getHistory({ limit: 20 })
+      .then((logs) => {
+        if (!active) return;
+        setHistoryLogs(Array.isArray(logs) ? logs : []);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const days = useMemo(
     () =>
@@ -383,71 +652,83 @@ function CalendarSection({
     setSelected(sel);
   };
 
-  const heading = days[3].toLocaleDateString(isAmharic ? "am-ET" : "en-US", { month: "long", year: "numeric" });
+  const heading = useMemo(() => {
+    if (calendarSystem === "ethiopian") {
+      const eth = gregorianDateToEthiopian(selected);
+      return formatEthiopianMonthTitle(eth.year, eth.month, isAmharic);
+    }
+    return selected.toLocaleDateString(isAmharic ? "am-ET" : "en-US", { month: "long", year: "numeric" });
+  }, [calendarSystem, selected, isAmharic]);
   
   const agenda = useMemo(() => {
-    // 1. Check if selected matches clinical ANC appointment
-    if (appointment?.appointment_date) {
-      const [y, m, d] = appointment.appointment_date.split("-").map(Number);
-      if (
-        selected.getFullYear() === y &&
-        selected.getMonth() === m - 1 &&
-        selected.getDate() === d
-      ) {
+    const selKey = `${selected.getFullYear()}-${String(selected.getMonth() + 1).padStart(2, "0")}-${String(selected.getDate()).padStart(2, "0")}`;
+
+    // 1. Check if selected matches real booked clinical ANC appointment
+    if (appointment?.appointment_date === selKey) {
+      return {
+        title: isAmharic
+          ? appointment.anc_contact_title_am || appointment.anc_contact_title || "የቅድመ ወሊድ ክትትል"
+          : appointment.anc_contact_title || "ANC Clinical Contact",
+        time: "09:30",
+        isAnc: true,
+      };
+    }
+
+    // 2. Check if selected matches any WHO ANC contact target date in the roadmap
+    if (ancSchedule?.all_contacts) {
+      const matchedContact = ancSchedule.all_contacts.find((c: any) => c.target_date === selKey);
+      if (matchedContact) {
         return {
-          title: isAmharic
-            ? appointment.anc_contact_title_am || appointment.anc_contact_title || "የቅድመ ወሊድ ክትትል"
-            : appointment.anc_contact_title || "ANC Clinical Contact",
+          title: isAmharic ? matchedContact.title_am : matchedContact.title_en,
           time: "09:30",
           isAnc: true,
         };
       }
-    } else if (nextAnc?.target_date) {
-      const [y, m, d] = nextAnc.target_date.split("-").map(Number);
-      if (
-        selected.getFullYear() === y &&
-        selected.getMonth() === m - 1 &&
-        selected.getDate() === d
-      ) {
-        return {
-          title: isAmharic ? nextAnc.title_am : nextAnc.title_en,
-          time: "09:30",
-          isAnc: true,
-        };
-      }
+    } else if (nextAnc?.target_date === selKey) {
+      return {
+        title: isAmharic ? nextAnc.title_am : nextAnc.title_en,
+        time: "09:30",
+        isAnc: true,
+      };
     }
 
-    // 2. Check saved user calendar items for selected day
-    try {
-      const saved = localStorage.getItem("mama-health-calendar-items-v1");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const selKey = `${selected.getFullYear()}-${String(selected.getMonth() + 1).padStart(2, "0")}-${String(selected.getDate()).padStart(2, "0")}`;
-        const match = Array.isArray(parsed) ? parsed.find((it: any) => it.date === selKey) : null;
-        if (match) {
-          return {
-            title: isAmharic ? match.title_am || match.title : match.title,
-            time: match.time || "09:00",
-            isAnc: false,
-          };
-        }
-      }
-    } catch {}
-
-    // 3. Fallback standard schedule
-    switch (selected.getDay()) {
-      case 1:
-        return { title: t("home.agendaMorning"), time: "08:00", isAnc: false };
-      case 3:
-        return { title: t("home.agendaMidwife"), time: "10:30", isAnc: false };
-      case 5:
-        return { title: t("home.agendaGlucose"), time: "09:15", isAnc: false };
-      case 6:
-        return { title: t("home.agendaYoga"), time: "18:00", isAnc: false };
-      default:
-        return null;
+    // 3. Check saved user calendar items for selected day
+    const match = calendarItems.find((it: any) => it.date === selKey);
+    if (match) {
+      return {
+        title: isAmharic ? match.title_am || match.title : match.title,
+        time: match.time ? match.time.slice(0, 5) : "09:00",
+        isAnc: false,
+      };
     }
-  }, [selected, appointment, nextAnc, isAmharic, t]);
+
+    // 4. Check if user logged a check-in on this day
+    const matchLog = historyLogs.find((l: any) => {
+      const ld = new Date(l.date || l.timestamp);
+      const lk = `${ld.getFullYear()}-${String(ld.getMonth() + 1).padStart(2, "0")}-${String(ld.getDate()).padStart(2, "0")}`;
+      return lk === selKey;
+    });
+    if (matchLog) {
+      return {
+        title: isAmharic ? "ዕለታዊ ምዝገባ ተመዝግቧል" : "Daily check-in completed",
+        time: "08:30",
+        isAnc: false,
+      };
+    }
+
+    // 5. Check if today matches mother's active supplements
+    if (sameDay(selected, now) && profile.supplements?.length > 0) {
+      const supp = profile.supplements[0];
+      return {
+        title: isAmharic ? `${supp.name} የመውሰጃ ሰዓት` : `${supp.name} reminder`,
+        time: supp.reminderTime || "08:00",
+        isAnc: false,
+      };
+    }
+
+    // No dummy prenatal yoga or fake glucose screening!
+    return null;
+  }, [selected, appointment, nextAnc, ancSchedule, profile.supplements, now, isAmharic, t]);
 
   return (
     <section
@@ -484,6 +765,7 @@ function CalendarSection({
         {days.map((d, i) => {
           const isSel = sameDay(d, selected);
           const isToday = sameDay(d, now);
+          const dayNum = calendarSystem === "ethiopian" ? gregorianDateToEthiopian(d).day : d.getDate();
           return (
             <button
               key={d.toISOString()}
@@ -514,7 +796,7 @@ function CalendarSection({
                     : "text-[#3b3226] dark:text-[#f5ede0]"
                 }`}
               >
-                {String(d.getDate()).padStart(2, "0")}
+                {String(dayNum).padStart(2, "0")}
               </span>
               {isToday && !isSel && (
                 <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[#d9ab5e]" />
@@ -552,52 +834,117 @@ function CalendarSection({
 /* ------------------------------------------------------------------ */
 
 export function HomeDashboard() {
+  const router = useRouter();
   const now = useMemo(() => new Date(), []);
-  const [pregnancy, setPregnancy] = useState<CurrentPregnancyStatus | null>(null);
-  const [appointment, setAppointment] = useState<UserAppointment | null>(null);
-  const [nextAnc, setNextAnc] = useState<WHOANCContact | null>(null);
-  const [latestReport, setLatestReport] = useState<ReportArchiveItem | null>(null);
 
   useEffect(() => {
-    let active = true;
+    if (!getAccessToken()) {
+      router.replace("/login");
+    }
+  }, [router]);
 
-    usersApi
-      .getMe()
-      .then((me) => {
-        if (!active) return;
-        if (me.current_pregnancy_status) {
-          setPregnancy(me.current_pregnancy_status);
-        }
-        if (me.appointment) {
-          setAppointment(me.appointment);
-        }
-      })
-      .catch(() => {});
+  const { data: userProfile } = useCurrentUser();
+  const { data: ancSchedule } = useAncSchedule();
+  const { data: latestSummary } = useLatestSummary();
 
-    ancApi
-      .getAncSchedule()
-      .then((sched) => {
-        if (!active) return;
-        if (sched.next_anc_contact) {
-          setNextAnc(sched.next_anc_contact);
-        }
-      })
-      .catch(() => {});
+  const pregnancy: CurrentPregnancyStatus | null = useMemo(() => {
+    if (!userProfile) return null;
+    const live = userProfile.current_pregnancy_status;
+    const weeks =
+      live?.gestational_age_weeks ??
+      (typeof userProfile.gestational_age_weeks === "number"
+        ? userProfile.gestational_age_weeks
+        : undefined);
+    const days =
+      live?.gestational_age_days ??
+      (typeof userProfile.gestational_age_days === "number"
+        ? userProfile.gestational_age_days
+        : 0);
+    const trimester =
+      live?.trimester ||
+      userProfile.trimester ||
+      (weeks
+        ? weeks < 14
+          ? "first_trimester"
+          : weeks < 28
+          ? "second_trimester"
+          : "third_trimester"
+        : undefined);
 
-    reportsApi
-      .getLatestSummary()
-      .then((summary) => {
-        if (!active) return;
-        if (summary && summary.id) {
-          setLatestReport(backendSummaryToArchiveItem(summary));
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      active = false;
+    if (weeks == null) return null;
+    return {
+      gestational_age_weeks: weeks,
+      gestational_age_days: days,
+      trimester: trimester || "first_trimester",
+      estimated_due_date: userProfile.estimated_due_date || live?.estimated_due_date || null,
+      formatted_age_en: live?.formatted_age_en || `${weeks} weeks`,
+      formatted_age_am: live?.formatted_age_am || `${weeks} ሳምንት`,
     };
-  }, []);
+  }, [userProfile]);
+
+  useEffect(() => {
+    if (!userProfile) return;
+    const live = userProfile.current_pregnancy_status;
+    const weeks =
+      live?.gestational_age_weeks ??
+      (typeof userProfile.gestational_age_weeks === "number"
+        ? userProfile.gestational_age_weeks
+        : undefined);
+    const days =
+      live?.gestational_age_days ??
+      (typeof userProfile.gestational_age_days === "number"
+        ? userProfile.gestational_age_days
+        : 0);
+    const trimester =
+      live?.trimester ||
+      userProfile.trimester ||
+      (weeks
+        ? weeks < 14
+          ? "first_trimester"
+          : weeks < 28
+          ? "second_trimester"
+          : "third_trimester"
+        : undefined);
+
+    const cleanName =
+      userProfile.name && userProfile.name.trim() && userProfile.name.trim().toLowerCase() !== "amara bennett"
+        ? userProfile.name.trim()
+        : undefined;
+    const cleanEmail =
+      userProfile.email && userProfile.email.trim() && userProfile.email.trim().toLowerCase() !== "amara.bennett@example.com"
+        ? userProfile.email.trim()
+        : undefined;
+
+    const profilePatch: Partial<Profile> = {
+      ...(cleanName ? { name: cleanName } : {}),
+      ...(cleanEmail ? { email: cleanEmail } : {}),
+      ...(userProfile.hospital ? { hospital: userProfile.hospital } : {}),
+      ...(userProfile.appointment?.appointment_date ? { nextAncDate: userProfile.appointment.appointment_date } : {}),
+    };
+
+    if (weeks != null) {
+      profilePatch.gestationalAgeWeeks = weeks;
+      profilePatch.gestationalAgeDays = days;
+      profilePatch.trimester = trimester || undefined;
+      profilePatch.edd = userProfile.estimated_due_date || live?.estimated_due_date || undefined;
+    }
+
+    if (Array.isArray(userProfile.supplements) && userProfile.supplements.length > 0) {
+      profilePatch.supplements = userProfile.supplements.map((s) => ({
+        id: s.id,
+        name: s.name,
+        reminderTime: s.reminder_time ? s.reminder_time.slice(0, 5) : "08:00",
+      }));
+    }
+
+    updateProfile(profilePatch);
+  }, [userProfile]);
+
+  const appointment = userProfile?.appointment ?? null;
+  const nextAnc = ancSchedule?.next_anc_contact ?? null;
+  const latestReport = useMemo(() => {
+    return latestSummary && latestSummary.id ? backendSummaryToArchiveItem(latestSummary) : null;
+  }, [latestSummary]);
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#f3ecdf] text-[#4a3f30] dark:bg-[#15120e] dark:text-[#f0e4ce]">
@@ -609,17 +956,22 @@ export function HomeDashboard() {
         <div className="absolute -right-20 bottom-[4%] h-[280px] w-[280px] rounded-full bg-white opacity-65 blur-[90px] dark:bg-[#8d6224] dark:opacity-12" />
       </div>
 
-      <main className="relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[960px] md:px-8">
+      <main className="page-enter relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[960px] md:px-8">
         <div className="space-y-4 md:grid md:grid-cols-2 md:gap-5 md:space-y-0">
           <div className="md:col-span-2">
             <TopSection now={now} pregnancy={pregnancy} />
           </div>
-          <StatsSection now={now} latestReport={latestReport} />
-          <CalendarSection
-            now={now}
-            appointment={appointment}
-            nextAnc={nextAnc}
-          />
+          <div className="page-stagger-1">
+            <StatsSection now={now} latestReport={latestReport} />
+          </div>
+          <div className="page-stagger-2">
+            <CalendarSection
+              now={now}
+              appointment={appointment}
+              nextAnc={nextAnc}
+              ancSchedule={ancSchedule}
+            />
+          </div>
         </div>
       </main>
 
