@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Bell } from "lucide-react";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { UserAvatar } from "./UserAvatar";
 import { useTranslation } from "./languageStore";
 import { useProfile } from "../settings/profileStore";
 import { useNotifications } from "../notifications/notificationsData";
@@ -11,14 +12,27 @@ import { useNotifications } from "../notifications/notificationsData";
 export function HomeTopBar({ now = new Date() }: { now?: Date }) {
   const { profile } = useProfile();
   const { unreadCount } = useNotifications();
-  const { t } = useTranslation();
+  const { t, isAmharic } = useTranslation();
+  const [deviceHour, setDeviceHour] = useState<number | null>(null);
 
-  const getGreeting = (date: Date) => {
-    const h = date.getHours();
+  useEffect(() => {
+    // Read the client device's local clock immediately after mount
+    setDeviceHour(new Date().getHours());
+  }, []);
+
+  const getGreeting = () => {
+    const h = deviceHour !== null ? deviceHour : now.getHours();
     if (h < 12) return t("greetings.morning");
     if (h < 18) return t("greetings.afternoon");
     return t("greetings.evening");
   };
+
+  const displayName =
+    profile.name?.trim() && profile.name.trim().toLowerCase() !== "amara bennett"
+      ? profile.name.trim()
+      : isAmharic
+        ? "እናት"
+        : "Mama";
 
   return (
     <div className="flex items-center justify-between">
@@ -28,18 +42,11 @@ export function HomeTopBar({ now = new Date() }: { now?: Date }) {
         aria-label={t("nav.settings")}
         className="flex items-center gap-3 rounded-full text-left transition active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79]"
       >
-        <Image
-          src="/images/avatar.jpg"
-          alt={profile.name}
-          width={48}
-          height={48}
-          priority
-          className="h-12 w-12 rounded-full object-cover ring-2 ring-white dark:ring-[#e5be79]/35"
-        />
+        <UserAvatar name={displayName} avatarIndex={profile.avatarIndex} size={48} />
         <div>
-          <p suppressHydrationWarning className="text-[13px] text-[#85735a] dark:text-[#9c8b72]">{getGreeting(now)}</p>
+          <p suppressHydrationWarning className="text-[13px] text-[#85735a] dark:text-[#9c8b72]">{getGreeting()}</p>
           <p className="text-[17px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-            {profile.name}
+            {displayName}
           </p>
         </div>
       </Link>

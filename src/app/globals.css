@@ -141,10 +141,104 @@ dialog.app-dialog {
   max-height: 100dvh;
   margin: auto;
   outline: none;
+  overflow: hidden;
 }
 
 dialog.app-dialog:not([open]) {
   display: none;
+}
+
+/* ==========================================================================
+   Custom Sleek Scrollbar for Dialogs & Modals
+   ========================================================================== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(185, 138, 62, 0.4) transparent;
+}
+
+.dark * {
+  scrollbar-color: rgba(229, 190, 121, 0.3) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(185, 138, 62, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(141, 106, 42, 0.7);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(229, 190, 121, 0.3);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(229, 190, 121, 0.6);
+}
+
+.custom-scrollbar,
+.report-sheet,
+dialog.app-dialog,
+dialog.app-dialog * {
+  --scrollbar-thumb: rgba(185, 138, 62, 0.45);
+  --scrollbar-thumb-hover: rgba(141, 106, 42, 0.75);
+  --scrollbar-track: transparent;
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.dark .custom-scrollbar,
+.dark .report-sheet,
+.dark dialog.app-dialog,
+.dark dialog.app-dialog * {
+  --scrollbar-thumb: rgba(229, 190, 121, 0.35);
+  --scrollbar-thumb-hover: rgba(229, 190, 121, 0.65);
+  --scrollbar-track: transparent;
+
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* WebKit / Chromium custom sleek scrollbar */
+.custom-scrollbar::-webkit-scrollbar,
+.report-sheet::-webkit-scrollbar,
+dialog.app-dialog::-webkit-scrollbar,
+dialog.app-dialog *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.report-sheet::-webkit-scrollbar-track,
+dialog.app-dialog::-webkit-scrollbar-track,
+dialog.app-dialog *::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  margin: 8px 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.report-sheet::-webkit-scrollbar-thumb,
+dialog.app-dialog::-webkit-scrollbar-thumb,
+dialog.app-dialog *::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.report-sheet::-webkit-scrollbar-thumb:hover,
+dialog.app-dialog::-webkit-scrollbar-thumb:hover,
+dialog.app-dialog *::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 @keyframes float-a {
@@ -828,6 +922,25 @@ dialog.app-dialog:not([open]) {
   animation-delay: var(--report-item-delay, 0ms);
 }
 
+.page-enter {
+  animation: report-reveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.page-stagger-1 {
+  animation: report-reveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 75ms;
+}
+
+.page-stagger-2 {
+  animation: report-reveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 150ms;
+}
+
+.page-stagger-3 {
+  animation: report-reveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 225ms;
+}
+
 .report-severity-cell.is-pending {
   opacity: 0;
   transform: translateY(5px) scale(0.72);
@@ -1073,25 +1186,19 @@ dialog.app-dialog:not([open]) {
 }
 
 .home-glass-bronze {
-  background:
-    radial-gradient(circle at 18% 0%, rgba(255, 244, 219, 0.34), transparent 40%),
-    linear-gradient(145deg, rgba(208, 158, 82, 0.76), rgba(145, 98, 39, 0.66));
-  border: 1px solid rgba(255, 238, 207, 0.5);
+  background: linear-gradient(145deg, rgba(214, 168, 92, 0.9), rgba(168, 118, 54, 0.85));
+  border: 1px solid rgba(255, 238, 207, 0.6);
   box-shadow:
-    inset 0 1px 0 rgba(255, 249, 235, 0.48),
-    inset 0 -1px 0 rgba(89, 57, 20, 0.12),
-    0 20px 42px -24px rgba(117, 75, 23, 0.55);
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 16px 36px -20px rgba(117, 75, 23, 0.45);
   -webkit-backdrop-filter: blur(26px) saturate(130%);
   backdrop-filter: blur(26px) saturate(130%);
 }
 
 .dark .home-glass-bronze {
-  background:
-    radial-gradient(circle at 18% 0%, rgba(255, 230, 180, 0.15), transparent 42%),
-    linear-gradient(145deg, rgba(118, 82, 34, 0.66), rgba(66, 45, 18, 0.78));
-  border: 1px solid rgba(235, 195, 128, 0.3);
+  background: linear-gradient(145deg, rgba(138, 98, 42, 0.85), rgba(92, 62, 24, 0.88));
+  border: 1px solid rgba(235, 195, 128, 0.35);
   box-shadow:
-    inset 0 1px 0 rgba(255, 242, 210, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    0 22px 46px -24px rgba(0, 0, 0, 0.82);
+    inset 0 1px 0 rgba(255, 242, 210, 0.2),
+    0 18px 40px -20px rgba(0, 0, 0, 0.75);
 }

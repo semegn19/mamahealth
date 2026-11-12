@@ -17,19 +17,37 @@ import {
 import { BottomNav } from "@/components/BottomNav";
 import { HomeTopBar } from "@/components/HomeTopBar";
 import { ModalDialog } from "@/components/ModalDialog";
+import { showToast } from "@/components/toastStore";
 import { useTranslation } from "@/components/languageStore";
-import { calendarApi, getAccessToken, usersApi } from "@/api";
+import { useProfile } from "@/settings/profileStore";
+import {
+  ancApi,
+  calendarApi,
+  getAccessToken,
+  useAncSchedule,
+  useCalendarItems,
+  useCurrentUser,
+  useInvalidateQueries,
+  usersApi,
+} from "@/api";
+import {
+  ethiopianToGregorianDate,
+  formatEthiopianDayTitle,
+  formatEthiopianMonthTitle,
+  formatEthiopianShortDate,
+  getEthiopianMonthCells,
+  gregorianDateToEthiopian,
+  shiftEthiopianMonth,
+} from "./ethiopianCalendar";
 import {
   backendToFrontendItem,
   dateKey,
-  DUE_DATE_KEY,
+  deduplicateCalendarItems,
   fromDateKey,
   frontendToBackendPayload,
   initialDueDate,
-  ITEMS_KEY,
   loadDueDate,
   loadItems,
-  starterItems,
   startOfWeek,
   type CalendarItem,
 } from "./calendarData";
@@ -407,14 +425,21 @@ function ItemEditor({
 
 export function CalendarPage() {
   const { t, isAmharic } = useTranslation();
+  const { profile } = useProfile();
+  const calendarSystem = profile.calendarSystem ?? "ethiopian";
   const today = useMemo(() => new Date(), []);
+  const todayEth = useMemo(() => gregorianDateToEthiopian(today), [today]);
   const [selected, setSelected] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), today.getDate()),
   );
   const [visibleMonth, setVisibleMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
-  const [items, setItems] = useState<CalendarItem[]>(() => starterItems(today));
+  const [visibleEth, setVisibleEth] = useState(() => ({
+    year: todayEth.year,
+    month: todayEth.month,
+  }));
+  const [items, setItems] = useState<CalendarItem[]>([]);
   const [dueDate, setDueDate] = useState(() => initialDueDate(today));
   const [isHydrated, setIsHydrated] = useState(false);
   const [editingDueDate, setEditingDueDate] = useState(false);
@@ -423,73 +448,71 @@ export function CalendarPage() {
   const [message, setMessage] = useState("");
   const firedRef = useRef(new Set<string>());
 
+  const { data: userProfile } = useCurrentUser();
+  const { data: ancSchedule } = useAncSchedule();
+  const { data: backendCalendarItems } = useCalendarItems();
+  const { invalidateCalendar } = useInvalidateQueries();
+
   const weekdays = isAmharic ? WEEKDAYS_AM : WEEKDAYS_EN;
 
   useEffect(() => {
-    const loadedItems = loadItems(today);
     const loadedDue = loadDueDate(today);
-    setItems(loadedItems);
     setDueDate(loadedDue);
     setDueDraft(loadedDue);
     setIsHydrated(true);
-
-    const token = getAccessToken();
-    if (!token) return;
-
-    usersApi
-      .getMe()
-      .then((profile) => {
-        const edd =
-          profile.estimated_due_date ||
-          profile.current_pregnancy_status?.estimated_due_date;
-        if (edd && /^\d{4}-\d{2}-\d{2}$/.test(edd)) {
-          setDueDate(edd);
-          setDueDraft(edd);
-          try {
-            localStorage.setItem(DUE_DATE_KEY, edd);
-          } catch {}
-        }
-      })
-      .catch((err) => {
-        console.warn("Could not sync pregnancy due date:", err);
-      });
-
-    calendarApi
-      .listItems()
-      .then((backendItems) => {
-        if (Array.isArray(backendItems) && backendItems.length > 0) {
-          const mapped = backendItems.map(backendToFrontendItem);
-          setItems(mapped);
-          try {
-            localStorage.setItem(ITEMS_KEY, JSON.stringify(mapped));
-          } catch {}
-        }
-      })
-      .catch((err) => {
-        console.warn(
-          "Could not fetch calendar items from cloud, using offline cache:",
-          err,
-        );
-      });
   }, [today]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
-    } catch {
-      /* In-memory editing still works. */
+    if (!userProfile) return;
+    const edd =
+      userProfile.estimated_due_date ||
+      userProfile.current_pregnancy_status?.estimated_due_date;
+    if (edd && /^\d{4}-\d{2}-\d{2}$/.test(edd)) {
+      setDueDate(edd);
+      setDueDraft(edd);
     }
-  }, [items, isHydrated]);
+  }, [userProfile]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      localStorage.setItem(DUE_DATE_KEY, dueDate);
-    } catch {
-      /* In-memory editing still works. */
+    const baseItems: CalendarItem[] = [];
+
+    // 1. Appointment from user profile
+    if (userProfile?.appointment) {
+      baseItems.push({
+        id: `apt-${userProfile.appointment.id}`,
+        title: userProfile.appointment.anc_contact_title || "Booked ANC Appointment",
+        title_am: userProfile.appointment.anc_contact_title_am || "የተያዘ የቅድመ ወሊድ ቀጠሮ",
+        type: "event",
+        date: userProfile.appointment.appointment_date,
+        time: "09:30",
+        reminderAt: "",
+      });
     }
-  }, [dueDate, isHydrated]);
+
+    // 2. ANC Schedule target contacts
+    if (ancSchedule?.all_contacts) {
+      const bookedDates = new Set(baseItems.map((it) => it.date));
+      const ancItems: CalendarItem[] = ancSchedule.all_contacts
+        .filter((c: any) => !bookedDates.has(c.target_date))
+        .map((c: any) => ({
+          id: `anc-contact-${c.contact_number}`,
+          title: c.title_en,
+          title_am: c.title_am,
+          type: "event",
+          date: c.target_date,
+          time: "09:30",
+          reminderAt: "",
+        }));
+      baseItems.push(...ancItems);
+    }
+
+    // 3. User created calendar events & tasks from backend
+    if (Array.isArray(backendCalendarItems)) {
+      baseItems.push(...backendCalendarItems.map(backendToFrontendItem));
+    }
+
+    setItems(deduplicateCalendarItems(baseItems));
+  }, [userProfile, ancSchedule, backendCalendarItems]);
 
   useEffect(() => {
     if (!message) return;
@@ -527,16 +550,24 @@ export function CalendarPage() {
   }, [items, isAmharic, t]);
 
   const monthCells = useMemo(() => {
+    if (calendarSystem === "ethiopian") {
+      return getEthiopianMonthCells(visibleEth.year, visibleEth.month);
+    }
     const first = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
     const count = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
-    return [
-      ...Array.from({ length: first.getDay() }, () => null),
-      ...Array.from(
-        { length: count },
-        (_, i) => new Date(first.getFullYear(), first.getMonth(), i + 1),
-      ),
-    ];
-  }, [visibleMonth]);
+    const leading = Array.from({ length: first.getDay() }, () => null);
+    const days = Array.from({ length: count }, (_, i) => {
+      const d = new Date(first.getFullYear(), first.getMonth(), i + 1);
+      const k = dateKey(d);
+      return {
+        ethDay: i + 1,
+        date: d,
+        dateKey: k,
+        isToday: k === dateKey(today),
+      };
+    });
+    return [...leading, ...days];
+  }, [calendarSystem, visibleEth, visibleMonth, today]);
 
   const selectedWeek = useMemo(() => startOfWeek(selected), [selected]);
   const weekDays = useMemo(
@@ -551,12 +582,12 @@ export function CalendarPage() {
 
   const plannedDays = weekDays.filter((date) => {
     const key = dateKey(date);
-    return key === dueDate || items.some((item) => item.date === key);
+    return key === dueDate || deduplicateCalendarItems(items).some((item) => item.date === key);
   });
 
   const selectedItems = useMemo(
     () =>
-      items
+      deduplicateCalendarItems(items)
         .filter((item) => item.date === dateKey(selected))
         .sort((a, b) => a.time.localeCompare(b.time)),
     [items, selected],
@@ -570,128 +601,154 @@ export function CalendarPage() {
   );
 
   const shiftMonth = (offset: number) => {
-    const next = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1);
-    setVisibleMonth(next);
-    setSelected(next);
+    if (calendarSystem === "ethiopian") {
+      const next = shiftEthiopianMonth(visibleEth.year, visibleEth.month, offset);
+      setVisibleEth(next);
+      const firstDate = ethiopianToGregorianDate(next.year, next.month, 1);
+      setSelected(firstDate);
+    } else {
+      const next = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1);
+      setVisibleMonth(next);
+      setSelected(next);
+    }
   };
   const selectDate = (date: Date) => setSelected(date);
   const editItem = (item: CalendarItem) => setEditor({ key: item.id, item });
 
   const saveItem = async (item: CalendarItem) => {
+    const prevItems = [...items];
     const isExistingLocal = items.some((existing) => existing.id === item.id);
     const nextItems = isExistingLocal
       ? items.map((existing) => (existing.id === item.id ? item : existing))
       : [...items, item];
 
     setItems(nextItems);
-    setSelected(fromDateKey(item.date));
+    const itemDate = fromDateKey(item.date);
+    setSelected(itemDate);
+    if (calendarSystem === "ethiopian") {
+      const eth = gregorianDateToEthiopian(itemDate);
+      setVisibleEth({ year: eth.year, month: eth.month });
+    }
     setVisibleMonth(new Date(Number(item.date.slice(0, 4)), Number(item.date.slice(5, 7)) - 1, 1));
     setEditor(null);
-    setMessage(
-      item.id.startsWith("sample-") || isExistingLocal
+
+    const token = getAccessToken();
+    if (token) {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id);
+      const isStarter = item.id.startsWith("sample-");
+      try {
+        if (isExistingLocal && isUUID && !isStarter) {
+          const updated = await calendarApi.updateItem(item.id, frontendToBackendPayload(item));
+          const synced = backendToFrontendItem(updated);
+          setItems((curr) => curr.map((it) => (it.id === item.id ? synced : it)));
+        } else {
+          const created = await calendarApi.createItem(frontendToBackendPayload(item));
+          const synced = backendToFrontendItem(created);
+          setItems((curr) => curr.map((it) => (it.id === item.id ? synced : it)));
+        }
+        invalidateCalendar();
+        const msg = item.id.startsWith("sample-") || isExistingLocal
+          ? t("calendar.entryUpdated")
+          : t("calendar.addedToCalendar");
+        setMessage(msg);
+        showToast(msg);
+      } catch (err) {
+        setItems(prevItems);
+        showToast(err instanceof Error ? err.message : "Failed to save calendar item", "error");
+        return;
+      }
+    } else {
+      const msg = item.id.startsWith("sample-") || isExistingLocal
         ? t("calendar.entryUpdated")
-        : t("calendar.addedToCalendar"),
-    );
+        : t("calendar.addedToCalendar");
+      setMessage(msg);
+      showToast(msg);
+    }
 
     if (item.reminderAt && "Notification" in window && Notification.permission === "default") {
       void Notification.requestPermission();
     }
-
-    const token = getAccessToken();
-    if (!token) return;
-
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      item.id,
-    );
-    const isStarter = item.id.startsWith("sample-");
-
-    try {
-      if (isExistingLocal && isUUID && !isStarter) {
-        const updated = await calendarApi.updateItem(
-          item.id,
-          frontendToBackendPayload(item),
-        );
-        const synced = backendToFrontendItem(updated);
-        setItems((curr) => curr.map((it) => (it.id === item.id ? synced : it)));
-      } else {
-        const created = await calendarApi.createItem(
-          frontendToBackendPayload(item),
-        );
-        const synced = backendToFrontendItem(created);
-        setItems((curr) => curr.map((it) => (it.id === item.id ? synced : it)));
-      }
-    } catch (err) {
-      console.warn("Failed to sync calendar item to server (saved locally):", err);
-    }
   };
 
   const deleteItem = async (id: string) => {
+    const prevItems = [...items];
     setItems((current) => current.filter((item) => item.id !== id));
     setEditor(null);
-    setMessage(t("calendar.entryDeleted"));
 
     const token = getAccessToken();
-    if (!token) return;
-
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      id,
-    );
-    if (!isUUID || id.startsWith("sample-")) return;
-
-    try {
-      await calendarApi.deleteItem(id);
-    } catch (err) {
-      console.warn("Failed to delete calendar item from server:", err);
+    if (!token) {
+      setMessage(t("calendar.entryDeleted"));
+      showToast(t("calendar.entryDeleted"));
+      return;
     }
-  };
 
-  const toggleComplete = async (item: CalendarItem) => {
-    const nextCompleted = !item.completed;
-    const updatedItem: CalendarItem = { ...item, completed: nextCompleted };
-
-    setItems((curr) => curr.map((it) => (it.id === item.id ? updatedItem : it)));
-    setMessage(
-      nextCompleted ? t("calendar.taskCompleted") : t("calendar.taskReopened"),
-    );
-
-    const token = getAccessToken();
-    if (!token) return;
-
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      item.id,
-    );
-    if (!isUUID || item.id.startsWith("sample-")) {
-      try {
-        const created = await calendarApi.createItem(
-          frontendToBackendPayload(updatedItem),
-        );
-        const synced = backendToFrontendItem(created);
-        setItems((curr) => curr.map((it) => (it.id === item.id ? synced : it)));
-      } catch (err) {
-        console.warn("Failed to persist completed task to server:", err);
-      }
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (!isUUID || id.startsWith("sample-")) {
+      setMessage(t("calendar.entryDeleted"));
+      showToast(t("calendar.entryDeleted"));
       return;
     }
 
     try {
-      await calendarApi.updateItem(item.id, { completed: nextCompleted });
+      await calendarApi.deleteItem(id);
+      invalidateCalendar();
+      setMessage(t("calendar.entryDeleted"));
+      showToast(t("calendar.entryDeleted"));
     } catch (err) {
-      console.warn("Failed to toggle task completion on server:", err);
+      setItems(prevItems);
+      showToast(err instanceof Error ? err.message : "Failed to delete calendar item", "error");
+    }
+  };
+
+  const toggleComplete = async (item: CalendarItem) => {
+    const prevItems = [...items];
+    const nextCompleted = !item.completed;
+    const updatedItem: CalendarItem = { ...item, completed: nextCompleted };
+
+    setItems((curr) => curr.map((it) => (it.id === item.id ? updatedItem : it)));
+
+    const token = getAccessToken();
+    if (!token) {
+      setMessage(nextCompleted ? t("calendar.taskCompleted") : t("calendar.taskReopened"));
+      return;
+    }
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id);
+    try {
+      if (!isUUID || item.id.startsWith("sample-")) {
+        const created = await calendarApi.createItem(frontendToBackendPayload(updatedItem));
+        const synced = backendToFrontendItem(created);
+        setItems((curr) => curr.map((it) => (it.id === item.id ? synced : it)));
+      } else {
+        await calendarApi.updateItem(item.id, { completed: nextCompleted });
+      }
+      invalidateCalendar();
+      setMessage(nextCompleted ? t("calendar.taskCompleted") : t("calendar.taskReopened"));
+    } catch (err) {
+      setItems(prevItems);
+      showToast(err instanceof Error ? err.message : "Failed to update task", "error");
     }
   };
 
   const saveDueDate = async (newDueDate: string) => {
+    const prevDueDate = dueDate;
     setDueDate(newDueDate);
     setEditingDueDate(false);
-    setMessage(t("calendar.dueDateUpdated"));
 
     const token = getAccessToken();
-    if (!token) return;
+    if (!token) {
+      setMessage(t("calendar.dueDateUpdated"));
+      showToast(t("calendar.dueDateUpdated"));
+      return;
+    }
 
     try {
       await usersApi.updateProfile({ estimated_due_date: newDueDate });
+      setMessage(t("calendar.dueDateUpdated"));
+      showToast(t("calendar.dueDateUpdated"));
     } catch (err) {
-      console.warn("Failed to sync due date to server:", err);
+      setDueDate(prevDueDate);
+      showToast(err instanceof Error ? err.message : "Failed to update due date", "error");
     }
   };
 
@@ -703,10 +760,10 @@ export function CalendarPage() {
         <div className="absolute -left-24 bottom-[5%] h-[300px] w-[300px] rounded-full bg-[#f7dfb3] opacity-50 blur-[100px] dark:bg-[#6e4c1b] dark:opacity-16" />
       </div>
 
-      <main className="relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[920px] md:px-8">
+      <main className="page-enter relative mx-auto w-full max-w-[440px] px-4 pb-36 pt-6 sm:pt-10 md:max-w-[920px] md:px-8">
         <HomeTopBar />
 
-        <div className="mt-8">
+        <div className="mt-8 page-enter">
           <h1 className="text-[34px] font-light leading-none tracking-[-0.035em] text-[#3b3226] dark:text-[#f5ede0]">
             {t("calendar.title")}
           </h1>
@@ -716,7 +773,7 @@ export function CalendarPage() {
         </div>
 
         <div className="mt-6 grid gap-5 md:grid-cols-[1.15fr_0.85fr] md:items-start">
-          <div className="min-w-0 space-y-5">
+          <div className="min-w-0 space-y-5 page-stagger-1">
             <section
               aria-label={t("calendar.title")}
               data-dashboard-card
@@ -724,7 +781,9 @@ export function CalendarPage() {
             >
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-[20px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                  {monthTitle(visibleMonth, isAmharic)}
+                  {calendarSystem === "ethiopian"
+                    ? formatEthiopianMonthTitle(visibleEth.year, visibleEth.month, isAmharic)
+                    : monthTitle(visibleMonth, isAmharic)}
                 </h2>
                 <div className="flex gap-2">
                   <button
@@ -756,23 +815,27 @@ export function CalendarPage() {
                 ))}
               </div>
               <div className="mt-2 grid grid-cols-7 gap-1.5">
-                {monthCells.map((date, i) => {
-                  if (!date) return <span key={`blank-${i}`} />;
-                  const key = dateKey(date);
+                {monthCells.map((cell, i) => {
+                  if (!cell) return <span key={`blank-${i}`} />;
+                  const key = cell.dateKey;
                   const isSelected = key === dateKey(selected);
-                  const isToday = key === dateKey(today);
+                  const isToday = cell.isToday;
                   const isDue = key === dueDate;
-                  const count = items.filter((item) => item.date === key).length;
+                  const count = deduplicateCalendarItems(items).filter((item) => item.date === key).length;
+                  const fullDateTitle =
+                    calendarSystem === "ethiopian"
+                      ? formatEthiopianDayTitle(cell.date, isAmharic)
+                      : dayTitle(cell.date, isAmharic);
                   return (
                     <button
                       key={key}
                       type="button"
-                      aria-label={`${dayTitle(date, isAmharic)}${isDue ? `, ${t("calendar.dueDate")}` : ""}${
+                      aria-label={`${fullDateTitle}${isDue ? `, ${t("calendar.dueDate")}` : ""}${
                         count ? `, ${count}` : ""
                       }`}
                       aria-pressed={isSelected}
                       aria-controls="selected-day-agenda"
-                      onClick={() => selectDate(date)}
+                      onClick={() => selectDate(cell.date)}
                       className={`relative flex aspect-square min-h-10 flex-col items-center justify-center rounded-full text-[14px] font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8d6a2a] dark:focus-visible:outline-[#e5be79] ${
                         isSelected
                           ? "bg-[#fbe7b8] text-[#3b3226] dark:bg-[#e5be79] dark:text-[#231b12]"
@@ -781,7 +844,7 @@ export function CalendarPage() {
                             : "text-[#4a3f30] hover:bg-white/70 dark:text-[#f0e4ce] dark:hover:bg-white/8"
                       }`}
                     >
-                      {date.getDate()}
+                      {cell.ethDay}
                       {isDue ? (
                         <Heart
                           size={10}
@@ -821,7 +884,9 @@ export function CalendarPage() {
                     id="selected-day-title"
                     className="text-[20px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
                   >
-                    {dayTitle(selected, isAmharic)}
+                    {calendarSystem === "ethiopian"
+                      ? formatEthiopianDayTitle(selected, isAmharic)
+                      : dayTitle(selected, isAmharic)}
                   </h2>
                   <p className="mt-1 text-[12px] text-[#6f6149] dark:text-[#b9a88e]">
                     {selectedItems.length === 0
@@ -866,7 +931,7 @@ export function CalendarPage() {
             </section>
           </div>
 
-          <div className="min-w-0 space-y-5">
+          <div className="min-w-0 space-y-5 page-stagger-2">
             <section
               aria-label={t("calendar.dueDate")}
               data-dashboard-card
@@ -874,15 +939,17 @@ export function CalendarPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-medium uppercase tracking-[0.17em] text-[#8d6a2a] dark:text-[#e5be79]">
+                  <p className="text-[13px] font-medium text-[#8d6a2a] dark:text-[#e5be79]">
                     {t("calendar.lookForward")}
                   </p>
                   <h2 className="mt-2 text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]">
-                    {due.toLocaleDateString(isAmharic ? "am-ET" : "en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {calendarSystem === "ethiopian"
+                      ? formatEthiopianDayTitle(due, isAmharic)
+                      : due.toLocaleDateString(isAmharic ? "am-ET" : "en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
                   </h2>
                   <p className="mt-1 text-[13px] text-[#6f6149] dark:text-[#d8c7ab]">
                     {t("calendar.estimatedDueDate")} · {dueText}
@@ -892,52 +959,16 @@ export function CalendarPage() {
                   <Heart size={21} strokeWidth={1.7} />
                 </span>
               </div>
-              {editingDueDate ? (
-                <form
-                  className="mt-4 flex flex-wrap items-end gap-2"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (dueDraft) {
-                      void saveDueDate(dueDraft);
-                    }
-                  }}
-                >
-                  <label className="flex-1 text-[12px] text-[#6f6149] dark:text-[#d8c7ab]">
-                    {t("calendar.estimatedDueDate")}
-                    <input
-                      type="date"
-                      required
-                      value={dueDraft}
-                      onChange={(event) => setDueDraft(event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-[#d8c6a4] bg-white px-3 py-2.5 text-[14px] text-[#3b3226] outline-none focus:border-[#a87a3d] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:focus:border-[#e5be79]"
-                    />
-                  </label>
-                  <button
-                    type="submit"
-                    className="rounded-full bg-[#4a3f30] px-4 py-2.5 text-[13px] font-medium text-white dark:bg-[#e5be79] dark:text-[#231b12]"
-                  >
-                    {t("common.save")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingDueDate(false)}
-                    className="rounded-full px-2 py-2.5 text-[13px] text-[#6f6149] dark:text-[#d8c7ab]"
-                  >
-                    {t("common.cancel")}
-                  </button>
-                </form>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDueDraft(dueDate);
-                    setEditingDueDate(true);
-                  }}
-                  className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-[#6f5a35] underline decoration-[#b98a3e]/70 underline-offset-4 dark:text-[#e5be79]"
-                >
-                  <Pencil size={14} /> {t("calendar.updateDueDate")}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setDueDraft(dueDate);
+                  setEditingDueDate(true);
+                }}
+                className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-[#6f5a35] underline decoration-[#b98a3e]/70 underline-offset-4 transition hover:text-[#3b3226] active:scale-95 dark:text-[#e5be79] dark:hover:text-[#f5ede0]"
+              >
+                <Pencil size={14} /> {t("calendar.updateDueDate")}
+              </button>
             </section>
 
             <section aria-label={t("calendar.thisWeek")}>
@@ -1031,6 +1062,82 @@ export function CalendarPage() {
           onSave={saveItem}
           onDelete={deleteItem}
         />
+      )}
+      {editingDueDate && (
+        <ModalDialog
+          open={true}
+          onClose={() => setEditingDueDate(false)}
+          ariaLabelledBy="due-date-modal-title"
+        >
+          <div className="report-sheet home-glass-warm max-h-[90dvh] w-full max-w-[440px] overflow-y-auto rounded-t-[30px] p-6 pb-[max(28px,env(safe-area-inset-bottom))] sm:rounded-[30px]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[13px] font-medium text-[#8d6a2a] dark:text-[#dfb870]">
+                  {t("calendar.estimatedDueDate")}
+                </p>
+                <h2
+                  id="due-date-modal-title"
+                  className="mt-1 text-[24px] font-medium tracking-tight text-[#3b3226] dark:text-[#f5ede0]"
+                >
+                  {t("calendar.updateDueDate")}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingDueDate(false)}
+                aria-label={t("common.close")}
+                className="home-icon-solid flex h-10 w-10 items-center justify-center rounded-full text-[#4a3f30] dark:text-[#f0e4ce]"
+              >
+                <X size={19} strokeWidth={1.8} />
+              </button>
+            </div>
+
+            <form
+              className="mt-6 space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (dueDraft) {
+                  void saveDueDate(dueDraft);
+                }
+              }}
+            >
+              <div>
+                <label
+                  htmlFor="due-date-field"
+                  className="block text-[13px] font-medium text-[#4a3f30] dark:text-[#dfcfb6]"
+                >
+                  {t("calendar.estimatedDueDate")}
+                </label>
+                <input
+                  id="due-date-field"
+                  type="date"
+                  required
+                  autoFocus
+                  value={dueDraft}
+                  onChange={(event) => setDueDraft(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-[#e6d3ad] bg-[#fffdf7] px-4 py-3 text-[15px] text-[#3b3226] outline-none placeholder:text-[#a99b84] focus:border-[#b8834a] focus:ring-2 focus:ring-[#c9a35d]/25 dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#f5ede0] dark:focus:border-[#e5be79]"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingDueDate(false)}
+                  className="rounded-full border border-[#e6d3ad] bg-[#fffdf7] px-4 py-3 text-[14px] font-medium text-[#6f6149] transition hover:bg-[#fbe7b8] dark:border-[#4a3c2c] dark:bg-[#18130e] dark:text-[#c7b69c] dark:hover:bg-[#292118]"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#4a3f30] px-5 py-3 text-[14px] font-medium text-[#fffaf0] transition hover:bg-[#655039] active:scale-[0.98] dark:bg-[#e5be79] dark:text-[#231b12] dark:hover:bg-[#f0cf92]"
+                >
+                  <Check size={17} strokeWidth={2} aria-hidden="true" />
+                  {t("common.save")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </ModalDialog>
       )}
     </div>
   );

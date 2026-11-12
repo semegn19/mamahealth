@@ -48,6 +48,10 @@ var l=localStorage.getItem("mama-health-language-v1")||localStorage.getItem("aur
 if(l==="am"||l==="en"){d.lang=l;}
 }catch(e){}})();`;
 
+import { ToastContainer } from "../components/Toast";
+import { QueryProvider } from "../providers/QueryProvider";
+import Script from "next/script";
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -57,10 +61,17 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${outfit.variable} ${notoSansEthiopic.variable}`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: bootScript }} />
-      </head>
-      <body>{children}</body>
+      <body>
+        <Script
+          id="mama-theme-boot"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: bootScript }}
+        />
+        <QueryProvider>
+          <ToastContainer />
+          {children}
+        </QueryProvider>
+      </body>
     </html>
   );
 }

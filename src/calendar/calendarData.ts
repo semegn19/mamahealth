@@ -11,11 +11,6 @@ export type CalendarItem = {
   completed?: boolean;
 };
 
-export const ITEMS_KEY = "mama-health-calendar-items-v1";
-export const LEGACY_ITEMS_KEY = "aurelia-calendar-items-v1";
-export const DUE_DATE_KEY = "mama-health-due-date-v1";
-export const LEGACY_DUE_DATE_KEY = "aurelia-due-date-v1";
-
 export function dateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -31,44 +26,48 @@ export function startOfWeek(date: Date) {
   return result;
 }
 
-import { mockInitialDueDate, mockStarterCalendarItems } from "../mock/calendar";
+export function deduplicateCalendarItems(items: CalendarItem[]): CalendarItem[] {
+  const seen = new Set<string>();
+  const result: CalendarItem[] = [];
 
-export function starterItems(today: Date): CalendarItem[] {
-  return mockStarterCalendarItems(today);
+  for (const item of items) {
+    if (!item) continue;
+    const normDate = (item.date || "").trim();
+    const normTime = (item.time || "09:00").slice(0, 5);
+    const rawTitle = (item.title || "").toLowerCase().trim().replace(/\s+/g, " ");
+
+    // Normalize ANC contact variants (e.g., "1st ANC Contact (Up to 12 Weeks)", "1st ANC Contact", "1ኛ የቅድመ ወሊድ ክትትል")
+    let normTitle = rawTitle;
+    const ancMatch = rawTitle.match(/^(\d+)(?:st|nd|rd|th|ኛ)?\s+(?:anc\s+contact|የቅድመ\s+ወሊድ\s+ክትትል)/i);
+    if (ancMatch) {
+      normTitle = `anc-contact-${ancMatch[1]}`;
+    }
+
+    const key = `${normDate}|${normTime}|${normTitle}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(item);
+    }
+  }
+
+  return result;
+}
+
+export function starterItems(_today: Date): CalendarItem[] {
+  return [];
 }
 
 export function initialDueDate(today: Date): string {
-  return mockInitialDueDate(today);
+  const due = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  due.setDate(due.getDate() + 280);
+  return dateKey(due);
 }
 
 export function loadItems(today: Date): CalendarItem[] {
-  try {
-    const saved = localStorage.getItem(ITEMS_KEY) ?? localStorage.getItem(LEGACY_ITEMS_KEY);
-    if (saved !== null) {
-      const parsed: unknown = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        return (parsed as CalendarItem[]).map((item) => {
-          const starter = starterItems(today).find((s) => s.id === item.id);
-          return {
-            ...item,
-            title_am: starter?.title_am ?? item.title_am,
-          };
-        });
-      }
-    }
-  } catch {
-    // Storage may be disabled; fall back to prototype events.
-  }
-  return starterItems(today);
+  return [];
 }
 
-export function loadDueDate(today: Date) {
-  try {
-    const stored = localStorage.getItem(DUE_DATE_KEY) ?? localStorage.getItem(LEGACY_DUE_DATE_KEY);
-    if (stored && /^\d{4}-\d{2}-\d{2}$/.test(stored)) return stored;
-  } catch {
-    // Storage may be disabled; keep the sample due date in memory.
-  }
+export function loadDueDate(today: Date): string {
   return initialDueDate(today);
 }
 
@@ -101,4 +100,3 @@ export function frontendToBackendPayload(item: CalendarItem): CalendarItemCreate
     completed: item.completed ?? false,
   };
 }
-
